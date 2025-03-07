@@ -549,31 +549,19 @@
         </form>
     </div>
     
-    <!-- Подключаем Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    
+    <!-- Удаляем Firebase SDK -->
     <script>
-        // Инициализация Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyCtOsyB2LRxpXb-fLjnbGVn-D-vUjU5sMA",
-            authDomain: "chatwave-app-987c7.firebaseapp.com",
-            databaseURL: "https://chatwave-app-987c7-default-rtdb.firebaseio.com",
-            projectId: "chatwave-app-987c7",
-            storageBucket: "chatwave-app-987c7.appspot.com",
-            messagingSenderId: "326433959886",
-            appId: "1:326433959886:web:f2c6365c9ee6d8a9b3bfd3"
-        };
-        
-        // Инициализация Firebase
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-        const messagesRef = database.ref('messages');
+        // Настройки GitHub для хранения данных
+        const GITHUB_TOKEN = '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';
+        const REPO_OWNER = 'chatwave-app'; // Замените на ваше имя пользователя GitHub
+        const REPO_NAME = 'chat-storage'; // Замените на имя вашего репозитория
+        const FILE_PATH = 'chat-data.json';
         
         let nickname = '';
         let messages = [];
-        let onlineUsers = {}; // Отслеживание онлайн пользователей
+        let lastUpdated = 0;
         let isDarkTheme = false; // По умолчанию светлая тема
+        let sha = ''; // SHA последней версии файла для обновления
         
         // DOM элементы
         const nicknameContainer = document.getElementById('nickname-container');
@@ -594,7 +582,8 @@
         function saveUserSettings() {
             const settings = {
                 nickname: nickname,
-                isDarkTheme: isDarkTheme
+                isDarkTheme: isDarkTheme,
+                lastUpdated: lastUpdated
             };
             localStorage.setItem('userSettings', JSON.stringify(settings));
         }
@@ -606,6 +595,7 @@
                 const parsedSettings = JSON.parse(settings);
                 isDarkTheme = parsedSettings.isDarkTheme;
                 nickname = parsedSettings.nickname;
+                lastUpdated = parsedSettings.lastUpdated || 0;
                 
                 // Применяем тему
                 if (isDarkTheme) {
@@ -619,10 +609,6 @@
                     nicknameContainer.style.display = 'none';
                     chatContainer.style.display = 'flex';
                     messageForm.style.display = 'block';
-                    
-                    // Обновляем статус пользователя на "онлайн"
-                    updateUserStatus(nickname, true);
-                    
                     showStatus(`Вы вошли как ${nickname}`, 'success');
                 }
             }
@@ -664,22 +650,27 @@
             // Загружаем настройки пользователя
             loadUserSettings();
             
-            // Начинаем слушать сообщения из Firebase
-            listenForMessages();
-            
-            // Слушаем статусы пользователей онлайн
-            database.ref('online').on('value', (snapshot) => {
-                if (snapshot.exists()) {
-                    onlineUsers = snapshot.val() || {};
-                }
-            });
-            
-            // Обработка закрытия окна или вкладки
-            window.addEventListener('beforeunload', () => {
+            try {
+                // Загружаем историю сообщений
+                showStatus('Загрузка сообщений...', '');
+                await loadChatHistory();
+                showStatus('Чат загружен', 'success');
                 if (nickname) {
-                    updateUserStatus(nickname, false);
+                    renderMessages();
                 }
-            });
+                
+                // Начинаем периодическую проверку новых сообщений
+                startPolling();
+            } catch (error) {
+                console.error('Ошибка при инициализации чата:', error);
+                showStatus('Не удалось загрузить сообщения', 'error');
+                
+                // Загружаем из кэша, если есть
+                loadFromCache();
+                if (nickname) {
+                    renderMessages();
+                }
+            }
         });
         
         // Обработчик отправки формы с никнеймом
@@ -690,12 +681,9 @@
                 nicknameContainer.style.display = 'none';
                 chatContainer.style.display = 'flex';
                 messageForm.style.display = 'block';
-                
-                // Обновляем статус пользователя на "онлайн"
-                updateUserStatus(nickname, true);
-                
                 showStatus(`Вы вошли как ${nickname}`, 'success');
                 saveUserSettings();
+                renderMessages();
             }
         });
         
@@ -705,95 +693,125 @@
             const messageText = messageInput.value.trim();
             if (messageText && nickname) {
                 const newMessage = {
+                    id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
                     nickname,
                     content: messageText,
-                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                    timestamp: Date.now()
                 };
+                
+                // Обновляем локальный список сообщений
+                messages.push(newMessage);
+                renderMessages();
+                messageInput.value = '';
+                messageInput.focus();
+                
+                // Вибрация при отправке сообщения (для мобильных)
+                if (navigator.vibrate) {
+                    navigator.vibrate(50);
+                }
                 
                 // Показываем индикатор отправки
                 showStatus('Отправка сообщения...', '');
                 
                 try {
-                    // Отправляем сообщение в Firebase
-                    await messagesRef.push(newMessage);
+                    // Сохраняем в кэш сразу
+                    saveToCache();
                     
-                    messageInput.value = '';
-                    messageInput.focus();
-                    
-                    // Вибрация при отправке сообщения (для мобильных)
-                    if (navigator.vibrate) {
-                        navigator.vibrate(50);
-                    }
-                    
+                    // Отправляем сообщение в GitHub
+                    await saveChatHistory();
                     showStatus('Сообщение отправлено', 'success');
                 } catch (error) {
                     console.error('Ошибка отправки сообщения:', error);
-                    showStatus('Ошибка отправки сообщения', 'error');
+                    showStatus('Сообщение сохранено локально', 'success');
                 }
             }
         });
         
-        // Обновление статуса пользователя (онлайн/офлайн)
-        function updateUserStatus(userNickname, isOnline) {
-            if (!userNickname) return;
-            
-            const userStatusRef = database.ref('online/' + userNickname.replace(/[.#$[\]]/g, '_'));
-            
-            if (isOnline) {
-                // Пользователь онлайн
-                userStatusRef.set({
-                    status: true,
-                    lastSeen: firebase.database.ServerValue.TIMESTAMP
+        // Загрузка истории чата из GitHub
+        async function loadChatHistory() {
+            try {
+                const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
+                    headers: {
+                        'Authorization': `token ${GITHUB_TOKEN}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
                 });
                 
-                // Установка статуса "офлайн" при отключении
-                userStatusRef.onDisconnect().update({
-                    status: false,
-                    lastSeen: firebase.database.ServerValue.TIMESTAMP
-                });
-            } else {
-                // Явно устанавливаем статус "офлайн"
-                userStatusRef.update({
-                    status: false,
-                    lastSeen: firebase.database.ServerValue.TIMESTAMP
-                });
+                if (response.status === 404) {
+                    // Файл не существует, создаем новый
+                    messages = [];
+                    sha = '';
+                    await saveChatHistory();
+                    return;
+                }
+                
+                if (!response.ok) {
+                    throw new Error(`GitHub API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                sha = data.sha;
+                
+                // Декодируем содержимое из base64
+                const content = atob(data.content);
+                const chatData = JSON.parse(content);
+                
+                // Обновляем сообщения
+                messages = chatData.messages || [];
+                lastUpdated = chatData.lastUpdated || Date.now();
+                
+                // Сохраняем в кэш
+                saveToCache();
+                
+                // Сохраняем последнее обновление
+                saveUserSettings();
+            } catch (error) {
+                console.error('Ошибка загрузки истории чата:', error);
+                throw error;
             }
         }
         
-        // Слушатель для новых сообщений
-        function listenForMessages() {
-            messagesRef.on('value', (snapshot) => {
-                showStatus('Обновление сообщений...', '');
+        // Сохранение истории чата в GitHub
+        async function saveChatHistory() {
+            try {
+                const chatData = {
+                    messages: messages,
+                    lastUpdated: Date.now()
+                };
                 
-                if (snapshot.exists()) {
-                    // Преобразуем данные Firebase в массив сообщений
-                    const messagesData = snapshot.val();
-                    messages = [];
-                    
-                    for (const key in messagesData) {
-                        if (messagesData.hasOwnProperty(key)) {
-                            const msg = messagesData[key];
-                            messages.push({
-                                id: key,
-                                nickname: msg.nickname,
-                                content: msg.content,
-                                timestamp: msg.timestamp
-                            });
-                        }
-                    }
-                    
-                    // Сортируем сообщения по времени
-                    messages.sort((a, b) => a.timestamp - b.timestamp);
-                    
-                    // Отображаем сообщения
-                    renderMessages();
-                    showStatus('Чат обновлен', 'success');
-                } else {
-                    messages = [];
-                    renderMessages();
-                    showStatus('Чат пуст. Отправьте первое сообщение!', 'success');
+                const content = JSON.stringify(chatData, null, 2);
+                const encodedContent = btoa(unescape(encodeURIComponent(content)));
+                
+                const body = {
+                    message: 'Update chat data',
+                    content: encodedContent,
+                    sha: sha || undefined
+                };
+                
+                const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${GITHUB_TOKEN}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/vnd.github.v3+json'
+                    },
+                    body: JSON.stringify(body)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`GitHub API error: ${response.status}`);
                 }
-            });
+                
+                const data = await response.json();
+                sha = data.content.sha;
+                lastUpdated = chatData.lastUpdated;
+                
+                // Обновляем настройки пользователя
+                saveUserSettings();
+            } catch (error) {
+                console.error('Ошибка сохранения истории чата:', error);
+                throw error;
+            }
         }
         
         // Функция форматирования даты
@@ -828,12 +846,38 @@
             return `${day}.${month}.${year}, ${timeString}`;
         }
         
-        // Проверка статуса пользователя (онлайн/офлайн)
-        function isUserOnline(userNickname) {
-            if (!userNickname || !onlineUsers) return false;
-            
-            const normalizedNickname = userNickname.replace(/[.#$[\]]/g, '_');
-            return onlineUsers[normalizedNickname] && onlineUsers[normalizedNickname].status === true;
+        // Проверка новых сообщений каждые 5 секунд
+        function startPolling() {
+            setInterval(async () => {
+                if (nickname) {
+                    try {
+                        await loadChatHistory();
+                        renderMessages();
+                    } catch (error) {
+                        console.error('Ошибка при проверке новых сообщений:', error);
+                    }
+                }
+            }, 5000);
+        }
+        
+        // Сохранение сообщений в локальном кэше (для резервного хранения)
+        function saveToCache() {
+            localStorage.setItem('chatMessages', JSON.stringify(messages));
+        }
+        
+        // Загрузка сообщений из локального кэша
+        function loadFromCache() {
+            const cachedMessages = localStorage.getItem('chatMessages');
+            if (cachedMessages) {
+                try {
+                    messages = JSON.parse(cachedMessages);
+                } catch (error) {
+                    console.error('Ошибка при загрузке кэша:', error);
+                    messages = [];
+                }
+            } else {
+                messages = [];
+            }
         }
         
         // Отображение сообщений в чате
@@ -853,7 +897,10 @@
             
             let prevDate = null;
             
-            messages.forEach((message, index) => {
+            // Сортируем сообщения по времени
+            const sortedMessages = [...messages].sort((a, b) => a.timestamp - b.timestamp);
+            
+            sortedMessages.forEach((message, index) => {
                 // Добавляем разделитель дат, если сообщение в новый день
                 const messageDate = new Date(message.timestamp).toDateString();
                 if (prevDate !== messageDate) {
@@ -879,16 +926,7 @@
                 
                 const nicknameElement = document.createElement('div');
                 nicknameElement.className = 'message-nickname';
-                
-                // Добавляем индикатор онлайн статуса
-                if (isUserOnline(message.nickname)) {
-                    const onlineIndicator = document.createElement('span');
-                    onlineIndicator.className = 'online-indicator';
-                    nicknameElement.textContent = message.nickname + ' ';
-                    nicknameElement.appendChild(onlineIndicator);
-                } else {
-                    nicknameElement.textContent = message.nickname;
-                }
+                nicknameElement.textContent = message.nickname;
                 
                 const contentElement = document.createElement('div');
                 contentElement.className = 'message-content';
