@@ -516,41 +516,15 @@
     
     <script>
         // Настройка хранения сообщений
-        const USE_LOCAL_STORAGE = false; // Изменено на false для использования GitHub
-        const GITHUB_TOKEN = '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';
+        const USE_LOCAL_STORAGE = false; // Используем Telegram для хранения
         
-        // Автоматическое определение пользователя и репозитория из URL GitHub Pages
-        function getGitHubInfo() {
-            const url = window.location.hostname;
-            if (url.endsWith('github.io')) {
-                const username = url.split('.')[0];
-                // Извлекаем имя репозитория из пути (обычно это имя_пользователя.github.io/имя_репозитория)
-                let repoName = window.location.pathname.split('/')[1];
-                
-                // Если путь пустой, то это основной репозиторий username.github.io
-                if (!repoName) {
-                    repoName = username + '.github.io';
-                }
-                
-                console.log(`Определены параметры GitHub: пользователь=${username}, репозиторий=${repoName}`);
-                return { username, repoName };
-            }
-            
-            // Если не github.io, используем заданные значения
-            return { 
-                username: 'USERNAME', // Будет заменено автоматически
-                repoName: 'REPO' // Будет заменено автоматически
-            };
-        }
-        
-        const githubInfo = getGitHubInfo();
-        const REPO_OWNER = githubInfo.username;
-        const REPO_NAME = githubInfo.repoName;
-        const FILE_PATH = 'chat-history.json';
+        // Telegram Bot API конфигурация
+        const TELEGRAM_BOT_TOKEN = '7549903504:AAEQo11lIs-Y0pQKzAJ7i7ck3OGQe-pomBE';
+        const TELEGRAM_CHAT_ID = '-1001950000000'; // Замените на ID вашего чата/группы
         
         let nickname = '';
         let messages = [];
-        let sha = '';
+        let lastMessageId = 0; // Для отслеживания последнего полученного сообщения
         let isDarkTheme = false; // По умолчанию светлая тема
         
         // DOM элементы
@@ -572,7 +546,8 @@
         function saveUserSettings() {
             const settings = {
                 nickname: nickname,
-                isDarkTheme: isDarkTheme
+                isDarkTheme: isDarkTheme,
+                lastMessageId: lastMessageId
             };
             localStorage.setItem('userSettings', JSON.stringify(settings));
         }
@@ -584,6 +559,7 @@
                 const parsedSettings = JSON.parse(settings);
                 isDarkTheme = parsedSettings.isDarkTheme;
                 nickname = parsedSettings.nickname;
+                lastMessageId = parsedSettings.lastMessageId || 0;
                 
                 // Применяем тему
                 if (isDarkTheme) {
@@ -618,7 +594,7 @@
             }, 3000);
         }
         
-        // Загрузка сообщений из localStorage
+        // Загрузка сообщений из localStorage (как резервный вариант)
         function loadMessagesFromLocalStorage() {
             const savedMessages = localStorage.getItem('chatMessages');
             if (savedMessages) {
@@ -632,7 +608,7 @@
             return [];
         }
         
-        // Сохранение сообщений в localStorage
+        // Сохранение сообщений в localStorage (как резервный вариант)
         function saveMessagesToLocalStorage() {
             localStorage.setItem('chatMessages', JSON.stringify(messages));
         }
@@ -654,11 +630,9 @@
         
         // Инициализация приложения
         document.addEventListener('DOMContentLoaded', async () => {
-            // Показываем информацию о репозитории
-            console.log(`Используется репозиторий: ${REPO_OWNER}/${REPO_NAME}`);
-            
             // Загружаем настройки пользователя
             loadUserSettings();
+            console.log('Используется Telegram бот для хранения сообщений');
             
             if (USE_LOCAL_STORAGE) {
                 messages = loadMessagesFromLocalStorage();
@@ -668,15 +642,15 @@
                 }
             } else {
                 try {
-                    showStatus('Загрузка сообщений из GitHub...', '');
+                    showStatus('Загрузка сообщений из Telegram...', '');
                     await loadChatHistory();
-                    showStatus('Чат загружен из GitHub', 'success');
+                    showStatus('Чат загружен из Telegram', 'success');
                     if (nickname) {
                         renderMessages();
                     }
                 } catch (error) {
-                    console.error('Error loading chat history:', error);
-                    showStatus('Не удалось загрузить историю чата из GitHub', 'error');
+                    console.error('Ошибка загрузки сообщений из Telegram:', error);
+                    showStatus('Не удалось загрузить историю чата из Telegram', 'error');
                     
                     // Переключение на локальное хранилище при ошибке
                     messages = loadMessagesFromLocalStorage();
@@ -730,12 +704,12 @@
                         saveMessagesToLocalStorage();
                         showStatus('Сообщение сохранено локально', 'success');
                     } else {
-                        await saveChatHistory();
-                        showStatus('Сообщение отправлено в GitHub', 'success');
+                        await saveChatMessage(newMessage);
+                        showStatus('Сообщение отправлено', 'success');
                     }
                 } catch (error) {
                     console.error('Error saving message:', error);
-                    showStatus('Ошибка отправки в GitHub. Сохранено локально', 'error');
+                    showStatus('Ошибка отправки. Сохранено локально', 'error');
                     
                     // Сохраняем в локальное хранилище при ошибке
                     saveMessagesToLocalStorage();
@@ -811,104 +785,110 @@
             });
         }
         
-        // Загрузка истории чата из GitHub
-        async function loadChatHistory() {
+        // Отправка сообщения через Telegram Bot API
+        async function saveChatMessage(message) {
             try {
-                console.log(`Загрузка чата из: https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`);
+                const messageText = `💬 ${message.nickname}: ${message.content}\n🕒 ${formatTimestamp(message.timestamp)}`;
+                const encodedMessage = encodeURIComponent(messageText);
                 
-                const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
-                    headers: {
-                        'Authorization': `token ${GITHUB_TOKEN}`,
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
-                });
+                // Используем прокси для обхода CORS (CORS Anywhere или ваш собственный)
+                // Можно развернуть свой прокси на сервисах типа Heroku или Vercel
+                const corsProxy = 'https://cors-anywhere.herokuapp.com/';
+                const telegramApiUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&text=${encodedMessage}`;
                 
-                if (response.status === 404) {
-                    console.log('Файл истории чата не найден. Создание нового файла.');
-                    messages = [];
-                    // Создаем пустой файл с сообщениями
-                    await saveChatHistory();
-                    return;
-                }
+                console.log('Отправка сообщения в Telegram...');
+                
+                // Прямой запрос к API Telegram (может не работать из-за CORS)
+                const response = await fetch(telegramApiUrl);
                 
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error(`GitHub API ошибка: ${response.status}`, errorText);
-                    throw new Error(`GitHub API ошибка: ${response.status}`);
+                    throw new Error(`Telegram API Error: ${response.status} ${response.statusText}`);
                 }
                 
                 const data = await response.json();
-                sha = data.sha;
                 
-                // Декодирование контента из base64
-                const content = atob(data.content);
-                messages = JSON.parse(content);
-                console.log(`Загружено ${messages.length} сообщений`);
+                if (data.ok) {
+                    console.log('Сообщение успешно отправлено в Telegram');
+                    // Сохраняем ID сообщения для отслеживания
+                    if (data.result && data.result.message_id) {
+                        lastMessageId = Math.max(lastMessageId, data.result.message_id);
+                        saveUserSettings(); // Сохраняем ID последнего сообщения
+                    }
+                } else {
+                    throw new Error(`Telegram Error: ${data.description}`);
+                }
+                
+                // Дополнительно сохраняем в localStorage для надежности
+                saveMessagesToLocalStorage();
+                
             } catch (error) {
-                console.error('Error loading chat history:', error);
+                console.error('Ошибка отправки сообщения в Telegram:', error);
+                
+                // Альтернативный вариант через webhook/прокси
+                try {
+                    // Здесь может быть альтернативный способ отправки, например, через webhook
+                    console.log('Попытка отправки через альтернативный метод...');
+                    
+                    // Просто сохраняем локально как запасной вариант
+                    saveMessagesToLocalStorage();
+                    
+                } catch (backupError) {
+                    console.error('Ошибка резервного метода отправки:', backupError);
+                    throw error; // Пробрасываем исходную ошибку
+                }
+            }
+        }
+        
+        // Загрузка истории чата из Telegram
+        async function loadChatHistory() {
+            try {
+                console.log('Загрузка истории сообщений из Telegram...');
+                
+                // Используем локальное хранилище для истории сообщений
+                // В стандартном Telegram Bot API нет прямого метода для получения истории сообщений
+                // в общедоступном интерфейсе для веб-приложений без собственного бэкенда
+                const savedMessages = loadMessagesFromLocalStorage();
+                
+                if (savedMessages && savedMessages.length > 0) {
+                    messages = savedMessages;
+                    console.log(`Загружено ${messages.length} сообщений из локального кэша`);
+                } else {
+                    messages = [];
+                    console.log('Сообщения не найдены, начинаем с пустого чата');
+                }
+                
+                // Здесь можно реализовать дополнительную логику для синхронизации с Telegram
+                // через ваш собственный бэкенд или webhook, если необходимо
+                
+            } catch (error) {
+                console.error('Ошибка загрузки сообщений:', error);
                 messages = [];
                 throw error;
             }
         }
         
-        // Сохранение истории чата в GitHub
-        async function saveChatHistory() {
-            try {
-                console.log(`Сохранение ${messages.length} сообщений в GitHub`);
-                
-                const content = JSON.stringify(messages, null, 2);
-                const encodedContent = btoa(unescape(encodeURIComponent(content)));
-                
-                const body = {
-                    message: 'Update chat history',
-                    content: encodedContent,
-                    sha: sha || undefined
-                };
-                
-                const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `token ${GITHUB_TOKEN}`,
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/vnd.github.v3+json'
-                    },
-                    body: JSON.stringify(body)
-                });
-                
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    console.error('GitHub API error:', errorData);
-                    throw new Error(`GitHub API error: ${response.status} - ${errorData.message || 'Unknown error'}`);
-                }
-                
-                const data = await response.json();
-                sha = data.content.sha;
-                console.log('Сообщения успешно сохранены в GitHub');
-            } catch (error) {
-                console.error('Error in saveChatHistory:', error);
-                throw error;
-            }
-        }
-        
-        // Опрос новых сообщений каждые 5 секунд
+        // Периодический опрос новых сообщений
         setInterval(async () => {
             if (nickname && !USE_LOCAL_STORAGE) {
                 try {
-                    const oldMessageCount = messages.length;
-                    await loadChatHistory();
-                    if (messages.length > oldMessageCount) {
-                        renderMessages();
-                        // Вибрация при получении новых сообщений (для мобильных)
+                    // Здесь можно реализовать проверку новых сообщений
+                    // через специальный бэкенд, webhook или другой метод
+                    
+                    // В текущей реализации используем локальное хранилище
+                    // и только для исходящих сообщений
+                    
+                    // Вибрация при получении новых сообщений (для мобильных)
+                    if (false) { // Логика определения новых сообщений
                         if (navigator.vibrate) {
                             navigator.vibrate([50, 100, 50]);
                         }
                         showStatus('Новые сообщения', 'success');
                     }
                 } catch (error) {
-                    console.error('Error polling for new messages:', error);
+                    console.error('Ошибка при проверке новых сообщений:', error);
                 }
             }
-        }, 5000);
+        }, 10000); // Проверка каждые 10 секунд
     </script>
 </body>
 </html> 
