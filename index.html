@@ -236,6 +236,101 @@
             height: 100%;
         }
 
+        .chat-main {
+            display: flex;
+            flex: 1;
+            gap: 15px;
+            height: calc(100% - 70px);
+        }
+
+        .chat-list {
+            width: 250px;
+            background-color: var(--chat-bg);
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow);
+            overflow-y: auto;
+        }
+
+        .chat-list-header {
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .new-chat-btn {
+            border: none;
+            background: none;
+            color: var(--primary-color);
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .chat-item {
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chat-item:hover {
+            background-color: var(--date-bg);
+        }
+
+        .chat-item.active {
+            background-color: var(--date-bg);
+            font-weight: bold;
+        }
+
+        .chat-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .chat-info {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .chat-name {
+            font-weight: bold;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-preview {
+            font-size: 12px;
+            opacity: 0.7;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
         .peers-list {
             display: flex;
             flex-wrap: wrap;
@@ -496,17 +591,31 @@
                 <button class="theme-switch" id="theme-switch" title="Switch theme">🌙</button>
             </header>
             
-            <div class="peers-list" id="peers-list">
-                <!-- Connected peers will be displayed here -->
-            </div>
-            
-            <div class="chat-area" id="chat-area">
-                <div class="system-message">This is a P2P chat. Messages are sent directly between browsers.</div>
-            </div>
-            
-            <div class="input-area">
-                <input type="text" class="message-input" id="message-input" placeholder="Type your message...">
-                <button class="send-button" id="send-button" disabled>➤</button>
+            <div class="chat-main">
+                <!-- Chat List -->
+                <div class="chat-list" id="chat-list">
+                    <div class="chat-list-header">
+                        <span>Chats</span>
+                        <button class="new-chat-btn" id="new-chat-btn" title="New chat">+</button>
+                    </div>
+                    <!-- Chat items will be displayed here -->
+                </div>
+                
+                <!-- Chat Content -->
+                <div class="chat-content">
+                    <div class="peers-list" id="peers-list">
+                        <!-- Connected peers will be displayed here -->
+                    </div>
+                    
+                    <div class="chat-area" id="chat-area">
+                        <div class="system-message">This is a P2P chat. Messages are sent directly between browsers.</div>
+                    </div>
+                    
+                    <div class="input-area">
+                        <input type="text" class="message-input" id="message-input" placeholder="Type your message...">
+                        <button class="send-button" id="send-button" disabled>➤</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -536,13 +645,17 @@
             const sendButton = document.getElementById('send-button');
             const themeSwitch = document.getElementById('theme-switch');
             const statusMessage = document.getElementById('status-message');
+            const chatList = document.getElementById('chat-list');
+            const newChatBtn = document.getElementById('new-chat-btn');
 
             // Application State
             let currentUser = '';
             let peer = null;
             let connections = {};
-            let messages = [];
+            let chatHistory = {};
             let isDarkTheme = false;
+            let currentChatPeerId = null;
+            let savedPeerId = '';
 
             // Initialize the app
             init();
@@ -571,9 +684,43 @@
                 });
                 sendButton.addEventListener('click', sendMessage);
                 themeSwitch.addEventListener('click', toggleTheme);
+                newChatBtn.addEventListener('click', showConnectScreen);
 
-                // Load messages from localStorage
-                loadMessages();
+                // Load chat history from localStorage
+                loadChatHistory();
+                
+                // If we already have a username, skip to the appropriate screen
+                if (currentUser) {
+                    userName.textContent = `@${currentUser}`;
+                    
+                    if (savedPeerId) {
+                        // Skip to chat screen if we have a peer ID and chat history
+                        loginScreen.style.display = 'none';
+                        
+                        if (Object.keys(chatHistory).length > 0) {
+                            connectScreen.style.display = 'none';
+                            chatScreen.style.display = 'flex';
+                            updateChatList();
+                            
+                            // Select the first chat
+                            if (!currentChatPeerId && Object.keys(chatHistory).length > 0) {
+                                selectChat(Object.keys(chatHistory)[0]);
+                            }
+                            
+                            // Initialize the peer with the saved ID
+                            initializePeer(savedPeerId);
+                        } else {
+                            // Show connect screen if we have a peer ID but no chat history
+                            connectScreen.style.display = 'flex';
+                            initializePeer(savedPeerId);
+                        }
+                    } else {
+                        // Show connect screen if we have a username but no peer ID
+                        loginScreen.style.display = 'none';
+                        connectScreen.style.display = 'flex';
+                        initializePeer();
+                    }
+                }
             }
 
             function loadUserSettings() {
@@ -590,17 +737,20 @@
                     userName.textContent = `@${currentUser}`;
                     nicknameInput.value = currentUser;
                 }
+                
+                // Load saved peer ID
+                savedPeerId = localStorage.getItem('peer_id') || '';
             }
 
-            function loadMessages() {
-                const savedMessages = localStorage.getItem('p2p_messages');
-                if (savedMessages) {
-                    messages = JSON.parse(savedMessages);
+            function loadChatHistory() {
+                const savedHistory = localStorage.getItem('chat_history');
+                if (savedHistory) {
+                    chatHistory = JSON.parse(savedHistory);
                 }
             }
 
-            function saveMessages() {
-                localStorage.setItem('p2p_messages', JSON.stringify(messages));
+            function saveChatHistory() {
+                localStorage.setItem('chat_history', JSON.stringify(chatHistory));
             }
 
             function handleLogin() {
@@ -622,14 +772,14 @@
             }
 
             function toggleSendButton() {
-                sendButton.disabled = !messageInput.value.trim() || Object.keys(connections).length === 0;
+                sendButton.disabled = !messageInput.value.trim() || Object.keys(connections).length === 0 || !currentChatPeerId;
             }
 
-            function initializePeer() {
+            function initializePeer(savedId = '') {
                 showStatus('Подключение к P2P сети...', 'info');
                 
-                // Create a random ID for this peer
-                const peerId = generatePeerId();
+                // Create a random ID for this peer or use the saved one
+                const peerId = savedId || generatePeerId();
                 
                 // Initialize the peer connection
                 peer = new Peer(peerId, {
@@ -638,7 +788,15 @@
                 
                 peer.on('open', (id) => {
                     myPeerId.textContent = id;
+                    
+                    // Save the peer ID for future sessions
+                    localStorage.setItem('peer_id', id);
+                    savedPeerId = id;
+                    
                     showStatus('Подключено к P2P сети', 'success');
+                    
+                    // Try to reconnect to saved peers
+                    reconnectToSavedPeers();
                 });
                 
                 peer.on('connection', (conn) => {
@@ -647,7 +805,43 @@
                 
                 peer.on('error', (err) => {
                     console.error('PeerJS error:', err);
+                    
+                    // If we get an "unavailable-id" error and were trying to use a saved ID,
+                    // retry with a new ID
+                    if (err.type === 'unavailable-id' && savedId) {
+                        localStorage.removeItem('peer_id');
+                        initializePeer();
+                        return;
+                    }
+                    
                     showStatus('Ошибка соединения: ' + err.type, 'error');
+                });
+            }
+
+            function reconnectToSavedPeers() {
+                // Get the list of saved peers from chat history
+                const savedPeers = Object.keys(chatHistory);
+                
+                if (savedPeers.length === 0) return;
+                
+                // Try to connect to each saved peer
+                savedPeers.forEach(peerId => {
+                    // Don't try to connect if already connected
+                    if (connections[peerId]) return;
+                    
+                    // Try to connect
+                    try {
+                        const conn = peer.connect(peerId, {
+                            reliable: true,
+                            metadata: {
+                                nickname: currentUser
+                            }
+                        });
+                        
+                        handleConnection(conn);
+                    } catch (err) {
+                        console.error('Error reconnecting to peer:', err);
+                    }
                 });
             }
 
@@ -665,6 +859,11 @@
                 }
             }
 
+            function showConnectScreen() {
+                connectScreen.style.display = 'flex';
+                chatScreen.style.display = 'none';
+            }
+
             function connectToPeer() {
                 const peerId = peerIdInput.value.trim();
                 if (!peerId) return;
@@ -676,6 +875,9 @@
                 
                 if (connections[peerId]) {
                     showStatus('Уже подключен к этому собеседнику', 'info');
+                    selectChat(peerId);
+                    connectScreen.style.display = 'none';
+                    chatScreen.style.display = 'flex';
                     return;
                 }
                 
@@ -700,8 +902,22 @@
                         nickname: conn.metadata?.nickname || 'Незнакомец'
                     };
                     
-                    // Add to peers list
+                    // Initialize chat history for this peer if needed
+                    if (!chatHistory[conn.peer]) {
+                        chatHistory[conn.peer] = {
+                            nickname: connections[conn.peer].nickname,
+                            messages: []
+                        };
+                        saveChatHistory();
+                    } else {
+                        // Update nickname if it has changed
+                        chatHistory[conn.peer].nickname = connections[conn.peer].nickname;
+                        saveChatHistory();
+                    }
+                    
+                    // Add to peers list and update chat list
                     updatePeersList();
+                    updateChatList();
                     
                     // Send your nickname
                     conn.send({
@@ -711,14 +927,13 @@
                     
                     // Show status and update UI
                     showStatus(`Подключен к ${connections[conn.peer].nickname}`, 'success');
-                    showConnectedToChatMessage(connections[conn.peer].nickname);
                     
-                    // Show chat screen if this is the first connection
-                    if (Object.keys(connections).length === 1) {
-                        connectScreen.style.display = 'none';
-                        chatScreen.style.display = 'flex';
-                        displayMessages();
-                    }
+                    // Show chat screen
+                    connectScreen.style.display = 'none';
+                    chatScreen.style.display = 'flex';
+                    
+                    // Select this chat
+                    selectChat(conn.peer);
                     
                     toggleSendButton();
                 });
@@ -729,26 +944,47 @@
                         // Update nickname if provided
                         if (data.nickname && connections[conn.peer]) {
                             connections[conn.peer].nickname = data.nickname;
+                            
+                            // Update in chat history
+                            if (chatHistory[conn.peer]) {
+                                chatHistory[conn.peer].nickname = data.nickname;
+                                saveChatHistory();
+                            }
+                            
                             updatePeersList();
+                            updateChatList();
                         }
                     } else if (data.type === 'message') {
-                        // Add message to the list and display it
+                        // Add message to the chat history
                         const message = {
                             id: data.id,
-                            nickname: connections[conn.peer].nickname,
+                            sender: connections[conn.peer].nickname,
                             content: data.content,
                             timestamp: data.timestamp,
-                            peerId: conn.peer
+                            isMe: false
                         };
                         
-                        messages.push(message);
-                        saveMessages();
+                        // Add to chat history
+                        if (!chatHistory[conn.peer]) {
+                            chatHistory[conn.peer] = {
+                                nickname: connections[conn.peer].nickname,
+                                messages: []
+                            };
+                        }
                         
-                        // Display only this new message
-                        displayNewMessage(message);
+                        chatHistory[conn.peer].messages.push(message);
+                        saveChatHistory();
+                        
+                        // Update chat list with preview
+                        updateChatList();
+                        
+                        // If this is the current chat, display the message
+                        if (currentChatPeerId === conn.peer) {
+                            displayNewMessage(message);
+                        }
                         
                         // Show notification
-                        showStatus('Новое сообщение получено', 'info');
+                        showStatus(`Новое сообщение от ${connections[conn.peer].nickname}`, 'info');
                     }
                 });
                 
@@ -759,7 +995,12 @@
                     
                     // Update UI
                     updatePeersList();
-                    showDisconnectedMessage(nickname);
+                    updateChatList();
+                    
+                    if (currentChatPeerId === conn.peer) {
+                        showDisconnectedMessage(nickname);
+                    }
+                    
                     showStatus(`${nickname} отключился`, 'error');
                     
                     toggleSendButton();
@@ -774,25 +1015,127 @@
             function updatePeersList() {
                 peersList.innerHTML = '';
                 
-                const peers = Object.values(connections);
-                
-                if (peers.length === 0) {
-                    const emptyEl = document.createElement('div');
-                    emptyEl.className = 'peer-item';
-                    emptyEl.innerHTML = 'Нет подключенных собеседников';
-                    peersList.appendChild(emptyEl);
-                    return;
-                }
-                
-                peers.forEach(peer => {
+                if (currentChatPeerId) {
+                    // Show peer info for current chat
+                    const peer = connections[currentChatPeerId];
+                    const peerName = peer ? peer.nickname : chatHistory[currentChatPeerId]?.nickname || 'Неизвестный';
+                    const isOnline = !!peer;
+                    
                     const peerEl = document.createElement('div');
                     peerEl.className = 'peer-item';
                     peerEl.innerHTML = `
-                        <span class="peer-status online"></span>
-                        <span>${peer.nickname}</span>
+                        <span class="peer-status ${isOnline ? 'online' : 'offline'}"></span>
+                        <span>${peerName} ${isOnline ? '(онлайн)' : '(оффлайн)'}</span>
                     `;
                     peersList.appendChild(peerEl);
+                } else {
+                    // Show "no chat selected" message
+                    const emptyEl = document.createElement('div');
+                    emptyEl.className = 'peer-item';
+                    emptyEl.innerHTML = 'Выберите чат из списка слева';
+                    peersList.appendChild(emptyEl);
+                }
+            }
+
+            function updateChatList() {
+                // Store current scroll position
+                const scrollPos = chatList.scrollTop;
+                
+                // Clear the list except for the header
+                const header = chatList.querySelector('.chat-list-header');
+                chatList.innerHTML = '';
+                chatList.appendChild(header);
+                
+                // Get all chats from history
+                const chats = Object.keys(chatHistory).map(peerId => {
+                    const chat = chatHistory[peerId];
+                    const lastMessage = chat.messages[chat.messages.length - 1];
+                    const isOnline = !!connections[peerId];
+                    
+                    return {
+                        peerId,
+                        nickname: chat.nickname,
+                        lastMessage: lastMessage ? {
+                            content: lastMessage.content,
+                            timestamp: lastMessage.timestamp
+                        } : null,
+                        isOnline
+                    };
                 });
+                
+                // Sort chats by last message time (newest first)
+                chats.sort((a, b) => {
+                    if (!a.lastMessage) return 1;
+                    if (!b.lastMessage) return -1;
+                    return b.lastMessage.timestamp - a.lastMessage.timestamp;
+                });
+                
+                if (chats.length === 0) {
+                    const emptyEl = document.createElement('div');
+                    emptyEl.className = 'chat-item';
+                    emptyEl.style.opacity = '0.6';
+                    emptyEl.textContent = 'Нет сохраненных чатов';
+                    chatList.appendChild(emptyEl);
+                    return;
+                }
+                
+                // Create chat items
+                chats.forEach(chat => {
+                    const chatEl = document.createElement('div');
+                    chatEl.className = 'chat-item';
+                    if (chat.peerId === currentChatPeerId) {
+                        chatEl.classList.add('active');
+                    }
+                    
+                    const initials = chat.nickname.split(' ')
+                        .map(n => n[0])
+                        .join('')
+                        .toUpperCase()
+                        .substring(0, 2);
+                    
+                    let previewText = 'Нет сообщений';
+                    if (chat.lastMessage) {
+                        previewText = chat.lastMessage.content.length > 30 
+                            ? chat.lastMessage.content.substring(0, 27) + '...' 
+                            : chat.lastMessage.content;
+                    }
+                    
+                    chatEl.innerHTML = `
+                        <div class="chat-avatar">${initials}</div>
+                        <div class="chat-info">
+                            <div class="chat-name">
+                                ${chat.nickname}
+                                <span class="peer-status ${chat.isOnline ? 'online' : 'offline'}" 
+                                    style="width: 6px; height: 6px; margin-left: 4px;"></span>
+                            </div>
+                            <div class="chat-preview">${previewText}</div>
+                        </div>
+                    `;
+                    
+                    chatEl.addEventListener('click', () => {
+                        selectChat(chat.peerId);
+                    });
+                    
+                    chatList.appendChild(chatEl);
+                });
+                
+                // Restore scroll position
+                chatList.scrollTop = scrollPos;
+            }
+
+            function selectChat(peerId) {
+                // Update current chat
+                currentChatPeerId = peerId;
+                
+                // Update UI
+                updateChatList();
+                updatePeersList();
+                
+                // Display messages for this chat
+                displayMessages();
+                
+                // Enable/disable send button
+                toggleSendButton();
             }
 
             function showConnectedToChatMessage(nickname) {
@@ -827,14 +1170,21 @@
             function displayMessages() {
                 chatArea.innerHTML = '<div class="system-message">This is a P2P chat. Messages are sent directly between browsers.</div>';
                 
-                if (messages.length === 0) {
+                if (!currentChatPeerId || !chatHistory[currentChatPeerId]) {
+                    chatArea.innerHTML += '<div style="text-align: center; padding: 20px; opacity: 0.7;">Выберите чат или подключитесь к новому собеседнику</div>';
+                    return;
+                }
+                
+                const chat = chatHistory[currentChatPeerId];
+                
+                if (chat.messages.length === 0) {
                     chatArea.innerHTML += '<div style="text-align: center; padding: 20px; opacity: 0.7;">Сообщений пока нет. Начните беседу!</div>';
                     return;
                 }
                 
                 let currentDate = null;
                 
-                messages.forEach(message => {
+                chat.messages.forEach(message => {
                     const messageDate = new Date(message.timestamp);
                     const dateString = formatDate(messageDate);
                     
@@ -846,11 +1196,19 @@
                     chatArea.appendChild(createMessageElement(message));
                 });
                 
+                // Check if peer is online and show status
+                const isOnline = !!connections[currentChatPeerId];
+                if (isOnline) {
+                    showConnectedToChatMessage(chat.nickname);
+                }
+                
                 // Scroll to bottom
                 chatArea.scrollTop = chatArea.scrollHeight;
             }
 
             function displayNewMessage(message) {
+                if (!currentChatPeerId) return;
+                
                 const currentDate = getLastDisplayedDate();
                 const messageDate = new Date(message.timestamp);
                 const dateString = formatDate(messageDate);
@@ -888,7 +1246,7 @@
             }
 
             function createMessageElement(message) {
-                const isCurrentUser = message.nickname === currentUser;
+                const isCurrentUser = message.isMe;
                 
                 const messageContainer = document.createElement('div');
                 messageContainer.className = 'message-container';
@@ -901,7 +1259,7 @@
                 
                 messageElement.innerHTML = `
                     <div class="message-info">
-                        <span class="message-nickname">${message.nickname}</span>
+                        <span class="message-nickname">${isCurrentUser ? currentUser : message.sender}</span>
                         <span class="message-time">${formatTime(messageTime)}</span>
                     </div>
                     <div class="message-content">${escapeHTML(message.content)}</div>
@@ -931,7 +1289,7 @@
 
             function sendMessage() {
                 const content = messageInput.value.trim();
-                if (!content || Object.keys(connections).length === 0) return;
+                if (!content || !currentChatPeerId) return;
                 
                 const messageId = Date.now() + Math.random().toString(36).substring(2, 8);
                 const timestamp = Date.now();
@@ -939,14 +1297,25 @@
                 // Create message object
                 const message = {
                     id: messageId,
-                    nickname: currentUser,
+                    sender: currentUser,
                     content: content,
-                    timestamp: timestamp
+                    timestamp: timestamp,
+                    isMe: true
                 };
                 
-                // Save to local messages
-                messages.push(message);
-                saveMessages();
+                // Add to chat history
+                if (!chatHistory[currentChatPeerId]) {
+                    chatHistory[currentChatPeerId] = {
+                        nickname: connections[currentChatPeerId]?.nickname || 'Неизвестный',
+                        messages: []
+                    };
+                }
+                
+                chatHistory[currentChatPeerId].messages.push(message);
+                saveChatHistory();
+                
+                // Update chat list
+                updateChatList();
                 
                 // Clear input
                 messageInput.value = '';
@@ -955,21 +1324,24 @@
                 // Display message locally
                 displayNewMessage(message);
                 
-                // Send to all connected peers
-                const messageData = {
-                    type: 'message',
-                    id: messageId,
-                    content: content,
-                    timestamp: timestamp
-                };
-                
-                Object.values(connections).forEach(peer => {
+                // Send to peer if connected
+                if (connections[currentChatPeerId]) {
+                    const messageData = {
+                        type: 'message',
+                        id: messageId,
+                        content: content,
+                        timestamp: timestamp
+                    };
+                    
                     try {
-                        peer.connection.send(messageData);
+                        connections[currentChatPeerId].connection.send(messageData);
                     } catch (err) {
                         console.error('Error sending message to peer:', err);
+                        showStatus('Ошибка отправки сообщения', 'error');
                     }
-                });
+                } else {
+                    showStatus('Сообщение сохранено локально, но собеседник не в сети', 'info');
+                }
             }
 
             function showStatus(message, type) {
