@@ -408,29 +408,6 @@
             background-color: rgba(46, 204, 113, 0.15);
         }
         
-        /* Пульсирующая точка для индикации онлайн */
-        .online-indicator {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            background-color: #4caf50;
-            border-radius: 50%;
-            margin-left: 5px;
-            position: relative;
-        }
-        
-        .online-indicator::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #4caf50;
-            border-radius: 50%;
-            animation: pulse-online 1.5s infinite;
-        }
-        
         /* Анимации */
         @keyframes floatIn {
             0% { opacity: 0; transform: translateY(20px); }
@@ -456,12 +433,6 @@
         @keyframes rotate {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
-        }
-        
-        @keyframes pulse-online {
-            0% { transform: scale(1); opacity: 1; }
-            70% { transform: scale(2); opacity: 0; }
-            100% { transform: scale(1); opacity: 0; }
         }
         
         @keyframes popIn {
@@ -549,21 +520,23 @@
         </form>
     </div>
     
-    <!-- Удаляем Firebase SDK -->
     <script>
-        // Настройки GitHub для хранения данных
-        const GITHUB_TOKEN = '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';
-        const REPO_OWNER = 'chatwave-app'; // Замените на ваше имя пользователя GitHub
-        const REPO_NAME = 'chat-storage'; // Замените на имя вашего репозитория
-        const FILE_PATH = 'chat-data.json';
+        // Конфигурация GitHub
+        const GITHUB_TOKEN = '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'; // Новый токен
         
+        // ======================= НАСТРОЙКА ЧАТА =======================
+        // Введите здесь ваши данные для GitHub
+        const REPO_OWNER = 'chatwave-app'; // Имя пользователя GitHub
+        const REPO_NAME = 'chat-storage';   // Имя репозитория
+        const FILE_PATH = 'messages.json';  // Имя файла для сохранения сообщений
+        // ============================================================
+        
+        // Переменные для хранения данных чата
         let nickname = '';
         let messages = [];
-        let lastUpdated = 0;
-        let isDarkTheme = false; // По умолчанию светлая тема
-        let sha = ''; // SHA последней версии файла для обновления
+        let isDarkTheme = false;
         
-        // DOM элементы
+        // Элементы DOM
         const nicknameContainer = document.getElementById('nickname-container');
         const nicknameForm = document.getElementById('nickname-form');
         const nicknameInput = document.getElementById('nickname-input');
@@ -573,61 +546,70 @@
         const statusElement = document.getElementById('status');
         const themeToggle = document.getElementById('theme-toggle');
         
-        // Запрещаем масштабирование двойным тапом
+        // Запрет масштабирования двойным тапом
         document.addEventListener('dblclick', function(e) {
             e.preventDefault();
         });
         
-        // Функция для сохранения настроек пользователя
+        // Запуск чата
+        document.addEventListener('DOMContentLoaded', () => {
+            // Загружаем сохраненные настройки
+            loadUserSettings();
+            
+            // Показываем начальный статус
+            showStatus('Подготовка чата...', '');
+            
+            // Загружаем сообщения
+            loadMessages()
+                .then(() => {
+                    showStatus('Чат готов к использованию', 'success');
+                    
+                    // Если никнейм уже есть, сразу отображаем чат
+                    if (nickname) {
+                        renderMessages();
+                    }
+                    
+                    // Запускаем периодическое обновление сообщений
+                    startMessagePolling();
+                })
+                .catch(error => {
+                    console.error('Ошибка при загрузке сообщений:', error);
+                    showStatus('Не удалось загрузить сообщения. Используется локальный режим.', 'error');
+                    
+                    // Загружаем из локального хранилища
+                    loadFromCache();
+                    
+                    // Если никнейм уже есть, сразу отображаем чат
+                    if (nickname) {
+                        renderMessages();
+                    }
+                });
+        });
+        
+        // Сохранение настроек пользователя
         function saveUserSettings() {
-            const settings = {
-                nickname: nickname,
-                isDarkTheme: isDarkTheme,
-                lastUpdated: lastUpdated
-            };
-            localStorage.setItem('userSettings', JSON.stringify(settings));
+            localStorage.setItem('chatNickname', nickname);
+            localStorage.setItem('chatTheme', isDarkTheme ? 'dark' : 'light');
         }
         
-        // Функция для загрузки настроек пользователя
+        // Загрузка настроек пользователя
         function loadUserSettings() {
-            const settings = localStorage.getItem('userSettings');
-            if (settings) {
-                const parsedSettings = JSON.parse(settings);
-                isDarkTheme = parsedSettings.isDarkTheme;
-                nickname = parsedSettings.nickname;
-                lastUpdated = parsedSettings.lastUpdated || 0;
-                
-                // Применяем тему
-                if (isDarkTheme) {
-                    document.documentElement.setAttribute('data-theme', 'dark');
-                    themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
-                }
-                
-                // Если никнейм уже сохранен, автоматически входим в чат
-                if (nickname) {
-                    nicknameInput.value = nickname;
-                    nicknameContainer.style.display = 'none';
-                    chatContainer.style.display = 'flex';
-                    messageForm.style.display = 'block';
-                    showStatus(`Вы вошли как ${nickname}`, 'success');
-                }
-            }
-        }
-        
-        // Функция для отображения статусного сообщения
-        function showStatus(message, type = '') {
-            statusElement.textContent = message;
-            statusElement.className = 'status visible';
-            
-            if (type === 'error') {
-                statusElement.classList.add('error');
-            } else if (type === 'success') {
-                statusElement.classList.add('success');
+            // Загружаем тему
+            const savedTheme = localStorage.getItem('chatTheme');
+            isDarkTheme = savedTheme === 'dark';
+            if (isDarkTheme) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
             }
             
-            setTimeout(() => {
-                statusElement.classList.remove('visible');
-            }, 3000);
+            // Загружаем никнейм
+            nickname = localStorage.getItem('chatNickname') || '';
+            if (nickname) {
+                nicknameInput.value = nickname;
+                nicknameContainer.style.display = 'none';
+                chatContainer.style.display = 'flex';
+                messageForm.style.display = 'block';
+            }
         }
         
         // Переключение темы
@@ -645,179 +627,83 @@
             saveUserSettings();
         });
         
-        // Инициализация приложения
-        document.addEventListener('DOMContentLoaded', async () => {
-            // Загружаем настройки пользователя
-            loadUserSettings();
-            
-            try {
-                // Загружаем историю сообщений
-                showStatus('Загрузка сообщений...', '');
-                await loadChatHistory();
-                showStatus('Чат загружен', 'success');
-                if (nickname) {
-                    renderMessages();
-                }
-                
-                // Начинаем периодическую проверку новых сообщений
-                startPolling();
-            } catch (error) {
-                console.error('Ошибка при инициализации чата:', error);
-                showStatus('Не удалось загрузить сообщения', 'error');
-                
-                // Загружаем из кэша, если есть
-                loadFromCache();
-                if (nickname) {
-                    renderMessages();
-                }
-            }
-        });
-        
-        // Обработчик отправки формы с никнеймом
+        // Вход в чат
         nicknameForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            nickname = nicknameInput.value.trim();
-            if (nickname) {
-                nicknameContainer.style.display = 'none';
-                chatContainer.style.display = 'flex';
-                messageForm.style.display = 'block';
-                showStatus(`Вы вошли как ${nickname}`, 'success');
-                saveUserSettings();
-                renderMessages();
-            }
+            
+            const inputNickname = nicknameInput.value.trim();
+            if (!inputNickname) return;
+            
+            nickname = inputNickname;
+            saveUserSettings();
+            
+            nicknameContainer.style.display = 'none';
+            chatContainer.style.display = 'flex';
+            messageForm.style.display = 'block';
+            
+            showStatus(`Вы вошли как ${nickname}`, 'success');
+            renderMessages();
         });
         
-        // Обработчик отправки сообщения
+        // Отправка сообщения
         messageForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            
             const messageText = messageInput.value.trim();
-            if (messageText && nickname) {
-                const newMessage = {
-                    id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
-                    nickname,
-                    content: messageText,
-                    timestamp: Date.now()
-                };
-                
-                // Обновляем локальный список сообщений
-                messages.push(newMessage);
-                renderMessages();
-                messageInput.value = '';
-                messageInput.focus();
-                
-                // Вибрация при отправке сообщения (для мобильных)
-                if (navigator.vibrate) {
-                    navigator.vibrate(50);
-                }
-                
-                // Показываем индикатор отправки
-                showStatus('Отправка сообщения...', '');
-                
-                try {
-                    // Сохраняем в кэш сразу
-                    saveToCache();
-                    
-                    // Отправляем сообщение в GitHub
-                    await saveChatHistory();
-                    showStatus('Сообщение отправлено', 'success');
-                } catch (error) {
-                    console.error('Ошибка отправки сообщения:', error);
-                    showStatus('Сообщение сохранено локально', 'success');
-                }
+            if (!messageText || !nickname) return;
+            
+            // Вибрация при отправке сообщения (для мобильных)
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
+            
+            const newMessage = {
+                id: Date.now() + Math.random().toString(36).substr(2, 5),
+                nickname: nickname,
+                content: messageText,
+                timestamp: Date.now()
+            };
+            
+            // Добавляем сообщение локально и отображаем сразу
+            messages.push(newMessage);
+            saveToCache();
+            renderMessages();
+            
+            // Очищаем поле ввода и устанавливаем фокус
+            messageInput.value = '';
+            messageInput.focus();
+            
+            // Показываем статус отправки
+            showStatus('Отправка сообщения...', '');
+            
+            // Отправляем сообщение на сервер
+            try {
+                await saveMessages();
+                showStatus('Сообщение отправлено', 'success');
+            } catch (error) {
+                console.error('Ошибка при отправке сообщения:', error);
+                showStatus('Сообщение сохранено локально', 'success');
             }
         });
         
-        // Загрузка истории чата из GitHub
-        async function loadChatHistory() {
-            try {
-                const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
-                    headers: {
-                        'Authorization': `token ${GITHUB_TOKEN}`,
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
-                });
-                
-                if (response.status === 404) {
-                    // Файл не существует, создаем новый
-                    messages = [];
-                    sha = '';
-                    await saveChatHistory();
-                    return;
-                }
-                
-                if (!response.ok) {
-                    throw new Error(`GitHub API error: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                sha = data.sha;
-                
-                // Декодируем содержимое из base64
-                const content = atob(data.content);
-                const chatData = JSON.parse(content);
-                
-                // Обновляем сообщения
-                messages = chatData.messages || [];
-                lastUpdated = chatData.lastUpdated || Date.now();
-                
-                // Сохраняем в кэш
-                saveToCache();
-                
-                // Сохраняем последнее обновление
-                saveUserSettings();
-            } catch (error) {
-                console.error('Ошибка загрузки истории чата:', error);
-                throw error;
-            }
-        }
-        
-        // Сохранение истории чата в GitHub
-        async function saveChatHistory() {
-            try {
-                const chatData = {
-                    messages: messages,
-                    lastUpdated: Date.now()
-                };
-                
-                const content = JSON.stringify(chatData, null, 2);
-                const encodedContent = btoa(unescape(encodeURIComponent(content)));
-                
-                const body = {
-                    message: 'Update chat data',
-                    content: encodedContent,
-                    sha: sha || undefined
-                };
-                
-                const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `token ${GITHUB_TOKEN}`,
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/vnd.github.v3+json'
-                    },
-                    body: JSON.stringify(body)
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`GitHub API error: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                sha = data.content.sha;
-                lastUpdated = chatData.lastUpdated;
-                
-                // Обновляем настройки пользователя
-                saveUserSettings();
-            } catch (error) {
-                console.error('Ошибка сохранения истории чата:', error);
-                throw error;
-            }
-        }
-        
-        // Функция форматирования даты
-        function formatTimestamp(timestamp) {
-            if (!timestamp) return '';
+        // Показать статусное сообщение
+        function showStatus(message, type = '') {
+            statusElement.textContent = message;
+            statusElement.className = 'status visible';
             
+            if (type === 'error') {
+                statusElement.classList.add('error');
+            } else if (type === 'success') {
+                statusElement.classList.add('success');
+            }
+            
+            setTimeout(() => {
+                statusElement.classList.remove('visible');
+            }, 3000);
+        }
+        
+        // Форматирование времени сообщения
+        function formatTime(timestamp) {
             const date = new Date(timestamp);
             const today = new Date();
             
@@ -846,41 +732,7 @@
             return `${day}.${month}.${year}, ${timeString}`;
         }
         
-        // Проверка новых сообщений каждые 5 секунд
-        function startPolling() {
-            setInterval(async () => {
-                if (nickname) {
-                    try {
-                        await loadChatHistory();
-                        renderMessages();
-                    } catch (error) {
-                        console.error('Ошибка при проверке новых сообщений:', error);
-                    }
-                }
-            }, 5000);
-        }
-        
-        // Сохранение сообщений в локальном кэше (для резервного хранения)
-        function saveToCache() {
-            localStorage.setItem('chatMessages', JSON.stringify(messages));
-        }
-        
-        // Загрузка сообщений из локального кэша
-        function loadFromCache() {
-            const cachedMessages = localStorage.getItem('chatMessages');
-            if (cachedMessages) {
-                try {
-                    messages = JSON.parse(cachedMessages);
-                } catch (error) {
-                    console.error('Ошибка при загрузке кэша:', error);
-                    messages = [];
-                }
-            } else {
-                messages = [];
-            }
-        }
-        
-        // Отображение сообщений в чате
+        // Отображение сообщений
         function renderMessages() {
             chatContainer.innerHTML = '';
             
@@ -895,27 +747,30 @@
                 return;
             }
             
-            let prevDate = null;
-            
             // Сортируем сообщения по времени
             const sortedMessages = [...messages].sort((a, b) => a.timestamp - b.timestamp);
             
-            sortedMessages.forEach((message, index) => {
-                // Добавляем разделитель дат, если сообщение в новый день
+            // Группировка по датам
+            let prevDate = null;
+            
+            sortedMessages.forEach((message) => {
+                // Получаем дату сообщения
                 const messageDate = new Date(message.timestamp).toDateString();
-                if (prevDate !== messageDate) {
+                
+                // Если дата изменилась, добавляем разделитель
+                if (messageDate !== prevDate) {
                     const dateDiv = document.createElement('div');
                     dateDiv.className = 'date-separator';
-                    dateDiv.textContent = formatTimestamp(message.timestamp).split(',')[0];
+                    dateDiv.textContent = formatTime(message.timestamp).split(',')[0];
                     dateDiv.style.textAlign = 'center';
                     dateDiv.style.margin = '20px 0';
                     dateDiv.style.color = 'var(--timestamp-color)';
                     dateDiv.style.fontSize = '0.8rem';
-                    dateDiv.style.position = 'relative';
                     chatContainer.appendChild(dateDiv);
                     prevDate = messageDate;
                 }
                 
+                // Создаем элемент сообщения
                 const isMyMessage = message.nickname === nickname;
                 
                 const messageElement = document.createElement('div');
@@ -934,25 +789,153 @@
                 
                 const timestampElement = document.createElement('div');
                 timestampElement.className = 'message-timestamp';
-                timestampElement.textContent = formatTimestamp(message.timestamp).split(',')[1].trim();
+                timestampElement.textContent = formatTime(message.timestamp).split(',')[1].trim();
                 
                 messageContent.appendChild(nicknameElement);
                 messageContent.appendChild(contentElement);
                 messageContent.appendChild(timestampElement);
                 messageElement.appendChild(messageContent);
                 chatContainer.appendChild(messageElement);
-                
-                // Если это последнее сообщение, добавляем небольшую задержку анимации
-                if (index === messages.length - 1) {
-                    messageElement.style.animationDelay = '0.1s';
-                }
             });
             
-            // Прокрутка к последнему сообщению с плавной анимацией
+            // Прокрутка к последнему сообщению
             chatContainer.scrollTo({
                 top: chatContainer.scrollHeight,
                 behavior: 'smooth'
             });
+        }
+        
+        // Загрузка сообщений из GitHub
+        async function loadMessages() {
+            try {
+                console.log('Загрузка сообщений из GitHub...');
+                
+                const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
+                    headers: {
+                        'Authorization': `token ${GITHUB_TOKEN}`
+                    }
+                });
+                
+                // Если файл не найден, создаем пустой файл
+                if (response.status === 404) {
+                    messages = [];
+                    await saveMessages();
+                    return;
+                }
+                
+                if (!response.ok) {
+                    throw new Error(`GitHub API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const content = atob(data.content);
+                const messageData = JSON.parse(content);
+                
+                messages = messageData.messages || [];
+                console.log(`Загружено ${messages.length} сообщений`);
+                
+                saveToCache(); // Кэшируем локально
+            } catch (error) {
+                console.error('Ошибка загрузки сообщений:', error);
+                throw error;
+            }
+        }
+        
+        // Сохранение сообщений в GitHub
+        async function saveMessages() {
+            try {
+                console.log('Сохранение сообщений в GitHub...');
+                
+                // Сначала получаем текущее состояние файла
+                let sha = '';
+                try {
+                    const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
+                        headers: {
+                            'Authorization': `token ${GITHUB_TOKEN}`
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        sha = data.sha;
+                    }
+                } catch (error) {
+                    console.log('Файл еще не существует, создаем новый');
+                }
+                
+                // Подготавливаем содержимое
+                const content = JSON.stringify({
+                    messages: messages,
+                    updated: Date.now()
+                }, null, 2);
+                
+                // Кодируем содержимое в base64
+                const encodedContent = btoa(unescape(encodeURIComponent(content)));
+                
+                // Параметры запроса
+                const body = {
+                    message: 'Update chat messages',
+                    content: encodedContent
+                };
+                
+                // Если у нас есть SHA, добавляем его в параметры запроса
+                if (sha) {
+                    body.sha = sha;
+                }
+                
+                // Отправляем запрос на обновление/создание файла
+                const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${GITHUB_TOKEN}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.text();
+                    console.error('GitHub API response:', errorData);
+                    throw new Error(`GitHub API error: ${response.status}`);
+                }
+                
+                console.log('Сообщения успешно сохранены в GitHub');
+            } catch (error) {
+                console.error('Ошибка сохранения сообщений:', error);
+                throw error;
+            }
+        }
+        
+        // Сохранение сообщений в локальный кэш
+        function saveToCache() {
+            localStorage.setItem('chatMessages', JSON.stringify(messages));
+        }
+        
+        // Загрузка сообщений из локального кэша
+        function loadFromCache() {
+            const cached = localStorage.getItem('chatMessages');
+            if (cached) {
+                try {
+                    messages = JSON.parse(cached);
+                } catch (e) {
+                    console.error('Ошибка при загрузке из кэша:', e);
+                    messages = [];
+                }
+            } else {
+                messages = [];
+            }
+        }
+        
+        // Проверка новых сообщений каждые 5 секунд
+        function startMessagePolling() {
+            setInterval(async () => {
+                try {
+                    await loadMessages();
+                    renderMessages();
+                } catch (error) {
+                    console.error('Ошибка при обновлении сообщений:', error);
+                }
+            }, 5000);
         }
     </script>
 </body>
