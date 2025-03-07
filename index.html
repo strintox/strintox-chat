@@ -377,7 +377,11 @@
                 <h1><span class="logo">ChatWave</span> <span id="user-name"></span></h1>
                 <button class="theme-switch" id="theme-switch" title="Switch theme">🌙</button>
             </header>
-            <div class="chat-area" id="chat-area"></div>
+            <div class="chat-area" id="chat-area">
+                <!-- START MESSAGES -->
+                <!-- Messages will be stored here when saved -->
+                <!-- END MESSAGES -->
+            </div>
             <div class="input-area">
                 <input type="text" class="message-input" id="message-input" placeholder="Type your message...">
                 <button class="send-button" id="send-button" disabled>➤</button>
@@ -392,9 +396,9 @@
         document.addEventListener('DOMContentLoaded', () => {
             // GitHub API Configuration
             const GITHUB_TOKEN = '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';
-            const REPO_OWNER = 'chatwave-app';
+            const REPO_OWNER = 'strintox';
             const REPO_NAME = 'strintox-chat';
-            const FILE_PATH = 'messages.json';
+            const FILE_PATH = 'index.html';
 
             // DOM Elements
             const loginScreen = document.getElementById('login-screen');
@@ -412,7 +416,8 @@
             let currentUser = '';
             let messages = [];
             let sha = '';
-            let syncInterval;
+            let lastCheckTime = 0;
+            let checkInterval;
             let isDarkTheme = false;
 
             // Initialize the app
@@ -435,10 +440,14 @@
                 sendButton.addEventListener('click', sendMessage);
                 themeSwitch.addEventListener('click', toggleTheme);
 
+                // Extract messages from HTML
+                extractMessagesFromHTML();
+
                 // If user is already logged in
                 if (currentUser) {
                     showChatScreen();
-                    loadMessages();
+                    displayMessages();
+                    startCheckingNewMessages();
                 }
             }
 
@@ -464,7 +473,8 @@
                     localStorage.setItem('username', nickname);
                     userName.textContent = `@${nickname}`;
                     showChatScreen();
-                    loadMessages();
+                    displayMessages();
+                    startCheckingNewMessages();
                 }
             }
 
@@ -494,97 +504,89 @@
                 sendButton.disabled = !messageInput.value.trim();
             }
 
-            async function loadMessages() {
-                showStatus('Loading messages...', 'info');
-                try {
-                    const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
-                        headers: {
-                            'Authorization': `token ${GITHUB_TOKEN}`,
-                            'Accept': 'application/vnd.github.v3+json'
-                        }
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch messages');
+            function extractMessagesFromHTML() {
+                // Извлекаем сообщения из HTML
+                const htmlContent = document.documentElement.outerHTML;
+                const messagesMatch = htmlContent.match(/<!-- START MESSAGES -->([\s\S]*?)<!-- END MESSAGES -->/);
+                
+                if (messagesMatch && messagesMatch[1].trim()) {
+                    try {
+                        // Распарсим JSON данные, если они есть
+                        const messagesData = JSON.parse(messagesMatch[1].trim());
+                        messages = messagesData || [];
+                    } catch (e) {
+                        console.error('Ошибка при извлечении сообщений из HTML', e);
+                        messages = [];
                     }
-
-                    const data = await response.json();
-                    sha = data.sha;
-                    
-                    // Decode the content from base64
-                    const content = atob(data.content);
-                    const messagesData = JSON.parse(content);
-                    
-                    messages = messagesData.messages || [];
-                    
-                    // Store messages in localStorage as backup
-                    localStorage.setItem('messages', JSON.stringify(messages));
-                    
-                    // Display messages
-                    displayMessages();
-                    
-                    // Start the sync interval
-                    if (syncInterval) clearInterval(syncInterval);
-                    syncInterval = setInterval(syncMessages, 5000);
-                    
-                    showStatus('Messages loaded successfully', 'success');
-                } catch (error) {
-                    console.error('Error loading messages:', error);
-                    showStatus('Error loading messages, using local cache', 'error');
-                    
-                    // Try to load from localStorage
-                    const localMessages = localStorage.getItem('messages');
-                    if (localMessages) {
-                        messages = JSON.parse(localMessages);
-                        displayMessages();
-                    }
+                } else {
+                    messages = [];
                 }
+                
+                // Сохраняем в localStorage как резервную копию
+                localStorage.setItem('messages', JSON.stringify(messages));
             }
 
-            async function syncMessages() {
+            function startCheckingNewMessages() {
+                // Проверяем новые сообщения каждые 30 секунд
+                if (checkInterval) clearInterval(checkInterval);
+                checkInterval = setInterval(checkForNewMessages, 30000);
+                
+                // И делаем сразу первую проверку
+                checkForNewMessages();
+            }
+
+            async function checkForNewMessages() {
                 try {
+                    // Получаем последнюю версию файла
                     const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
                         headers: {
                             'Authorization': `token ${GITHUB_TOKEN}`,
-                            'Accept': 'application/vnd.github.v3+json'
+                            'Accept': 'application/vnd.github.v3+json',
+                            'If-None-Match': '' // Игнорируем кэш
                         }
                     });
 
                     if (!response.ok) {
-                        throw new Error('Failed to sync messages');
+                        throw new Error('Не удалось получить файл');
                     }
 
                     const data = await response.json();
-                    
-                    // If the SHA hasn't changed, there are no new messages
-                    if (sha === data.sha) return;
-                    
-                    // Update SHA
                     sha = data.sha;
                     
-                    // Decode the content from base64
+                    // Декодируем содержимое из base64
                     const content = atob(data.content);
-                    const messagesData = JSON.parse(content);
                     
-                    // Check if there are new messages
-                    if (messagesData.messages.length > messages.length) {
-                        const newMessages = messagesData.messages.slice(messages.length);
-                        messages = messagesData.messages;
-                        
-                        // Store messages in localStorage as backup
-                        localStorage.setItem('messages', JSON.stringify(messages));
-                        
-                        // Display only new messages
-                        displayNewMessages(newMessages);
-                        
-                        // Show notification if not from current user
-                        const hasOtherUserMessages = newMessages.some(msg => msg.nickname !== currentUser);
-                        if (hasOtherUserMessages) {
-                            showStatus('New messages received', 'info');
+                    // Извлекаем сообщения из HTML
+                    const messagesMatch = content.match(/<!-- START MESSAGES -->([\s\S]*?)<!-- END MESSAGES -->/);
+                    
+                    if (messagesMatch && messagesMatch[1].trim()) {
+                        try {
+                            const newMessages = JSON.parse(messagesMatch[1].trim());
+                            
+                            // Если есть новые сообщения
+                            if (newMessages && newMessages.length > messages.length) {
+                                // Только новые сообщения
+                                const addedMessages = newMessages.slice(messages.length);
+                                messages = newMessages;
+                                
+                                // Сохраняем в localStorage
+                                localStorage.setItem('messages', JSON.stringify(messages));
+                                
+                                // Отображаем только новые сообщения
+                                displayNewMessages(addedMessages);
+                                
+                                // Уведомляем пользователя, если сообщения не от него
+                                const hasOtherUserMessages = addedMessages.some(msg => msg.nickname !== currentUser);
+                                if (hasOtherUserMessages) {
+                                    showStatus('Получены новые сообщения', 'info');
+                                }
+                            }
+                        } catch (e) {
+                            console.error('Ошибка при обработке сообщений', e);
                         }
                     }
                 } catch (error) {
-                    console.error('Error syncing messages:', error);
+                    console.error('Ошибка при проверке новых сообщений:', error);
                 }
             }
 
@@ -592,7 +594,7 @@
                 chatArea.innerHTML = '';
                 
                 if (messages.length === 0) {
-                    chatArea.innerHTML = '<div style="text-align: center; padding: 20px; opacity: 0.7;">No messages yet. Be the first to say hello!</div>';
+                    chatArea.innerHTML = '<div style="text-align: center; padding: 20px; opacity: 0.7;">Сообщений пока нет. Напишите первым!</div>';
                     return;
                 }
                 
@@ -610,7 +612,7 @@
                     chatArea.appendChild(createMessageElement(message));
                 });
                 
-                // Scroll to bottom
+                // Прокручиваем вниз
                 chatArea.scrollTop = chatArea.scrollHeight;
             }
 
@@ -629,14 +631,14 @@
                     const messageElement = createMessageElement(message);
                     chatArea.appendChild(messageElement);
                     
-                    // Add pulse animation to new messages
+                    // Добавляем анимацию пульсации для новых сообщений
                     setTimeout(() => {
                         messageElement.classList.add('pulse');
                         setTimeout(() => messageElement.classList.remove('pulse'), 1000);
                     }, 100);
                 });
                 
-                // Scroll to bottom
+                // Прокручиваем вниз
                 chatArea.scrollTop = chatArea.scrollHeight;
             }
 
@@ -685,16 +687,16 @@
                 yesterday.setDate(yesterday.getDate() - 1);
                 
                 if (date.toDateString() === today.toDateString()) {
-                    return 'Today';
+                    return 'Сегодня';
                 } else if (date.toDateString() === yesterday.toDateString()) {
-                    return 'Yesterday';
+                    return 'Вчера';
                 } else {
-                    return date.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+                    return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
                 }
             }
 
             function formatTime(date) {
-                return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
             }
 
             async function sendMessage() {
@@ -708,14 +710,14 @@
                     timestamp: Date.now()
                 };
                 
-                // Add to local messages first
+                // Добавляем в локальный массив
                 messages.push(newMessage);
                 
-                // Clear input
+                // Очищаем поле ввода
                 messageInput.value = '';
                 toggleSendButton();
                 
-                // Display the new message
+                // Отображаем локально
                 const currentDate = getLastDisplayedDate();
                 const messageDate = new Date(newMessage.timestamp);
                 const dateString = formatDate(messageDate);
@@ -727,16 +729,37 @@
                 chatArea.appendChild(createMessageElement(newMessage));
                 chatArea.scrollTop = chatArea.scrollHeight;
                 
-                // Save to GitHub
+                // Сохраняем в HTML файл через GitHub API
                 try {
-                    const messagesData = {
-                        messages: messages,
-                        updated: Date.now()
-                    };
+                    showStatus('Отправка сообщения...', 'info');
                     
-                    const content = JSON.stringify(messagesData, null, 2);
-                    
+                    // Получаем последнюю версию файла
                     const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
+                        headers: {
+                            'Authorization': `token ${GITHUB_TOKEN}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Не удалось получить файл');
+                    }
+
+                    const data = await response.json();
+                    const fileSha = data.sha;
+                    
+                    // Декодируем содержимое из base64
+                    let content = atob(data.content);
+                    
+                    // Заменяем раздел с сообщениями
+                    const messagesJson = JSON.stringify(messages);
+                    content = content.replace(
+                        /<!-- START MESSAGES -->[\s\S]*?<!-- END MESSAGES -->/,
+                        `<!-- START MESSAGES -->\n${messagesJson}\n<!-- END MESSAGES -->`
+                    );
+                    
+                    // Отправляем обновленный файл
+                    const updateResponse = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
                         method: 'PUT',
                         headers: {
                             'Authorization': `token ${GITHUB_TOKEN}`,
@@ -744,28 +767,25 @@
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
-                            message: 'Update messages',
+                            message: `Добавлено новое сообщение от ${currentUser}`,
                             content: btoa(content),
-                            sha: sha
+                            sha: fileSha
                         })
                     });
                     
-                    if (!response.ok) {
-                        throw new Error('Failed to save message');
+                    if (!updateResponse.ok) {
+                        throw new Error('Не удалось сохранить сообщение');
                     }
                     
-                    const data = await response.json();
-                    sha = data.content.sha;
-                    
-                    // Update local storage
+                    // Обновляем локальное хранилище
                     localStorage.setItem('messages', JSON.stringify(messages));
                     
-                    showStatus('Message sent', 'success');
+                    showStatus('Сообщение отправлено', 'success');
                 } catch (error) {
-                    console.error('Error saving message:', error);
-                    showStatus('Message saved locally', 'error');
+                    console.error('Ошибка при сохранении сообщения:', error);
+                    showStatus('Сообщение сохранено локально', 'error');
                     
-                    // Still update local storage
+                    // Всё равно обновляем локальное хранилище
                     localStorage.setItem('messages', JSON.stringify(messages));
                 }
             }
