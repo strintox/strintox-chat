@@ -11,15 +11,15 @@
         :root {
             /* Светлая тема (по умолчанию) */
             --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #e4e8ed 100%);
-            --container-bg: rgba(255, 255, 255, 0.85);
-            --header-gradient: linear-gradient(135deg, #6e8efb 0%, #4a76a8 100%);
-            --primary-color: #4a76a8;
-            --primary-hover: #6e8efb;
+            --container-bg: rgba(255, 255, 255, 0.9);
+            --header-gradient: linear-gradient(135deg, #6a79ff 0%, #4361ee 100%);
+            --primary-color: #4361ee;
+            --primary-hover: #3a56e8;
             --text-color: #2c3e50;
-            --message-bg: rgba(245, 245, 245, 0.9);
-            --my-message-gradient: linear-gradient(120deg, #e3f2fd 0%, #bbdefb 100%);
+            --message-bg: rgba(245, 245, 245, 0.95);
+            --my-message-gradient: linear-gradient(120deg, #e2f2ff 0%, #c9e3ff 100%);
             --border-color: rgba(230, 230, 230, 0.5);
-            --input-bg: rgba(255, 255, 255, 0.9);
+            --input-bg: rgba(255, 255, 255, 0.95);
             --shadow-color: rgba(0, 0, 0, 0.05);
             --card-shadow: 0 10px 20px rgba(0, 0, 0, 0.04), 0 2px 6px rgba(0, 0, 0, 0.04);
             --status-color: #666666;
@@ -30,22 +30,22 @@
         }
         
         [data-theme="dark"] {
-            --bg-gradient: linear-gradient(135deg, #141e30 0%, #1a1a2e 100%);
-            --container-bg: rgba(22, 33, 62, 0.85);
-            --header-gradient: linear-gradient(135deg, #4a76a8 0%, #283e6d 100%);
-            --primary-color: #4a76a8;
-            --primary-hover: #5889bd;
+            --bg-gradient: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+            --container-bg: rgba(31, 41, 55, 0.9);
+            --header-gradient: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+            --primary-color: #4361ee;
+            --primary-hover: #5a72ff;
             --text-color: #e6e6e6;
-            --message-bg: rgba(42, 42, 74, 0.8);
-            --my-message-gradient: linear-gradient(120deg, #2c3c5a 0%, #1e293b 100%);
-            --border-color: rgba(41, 50, 82, 0.5);
-            --input-bg: rgba(33, 36, 66, 0.8);
+            --message-bg: rgba(55, 65, 81, 0.9);
+            --my-message-gradient: linear-gradient(120deg, #3a56e8 0%, #334ce0 100%);
+            --border-color: rgba(75, 85, 99, 0.5);
+            --input-bg: rgba(55, 65, 81, 0.8);
             --shadow-color: rgba(0, 0, 0, 0.2);
             --card-shadow: 0 10px 20px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.1);
-            --status-color: #a0a0a0;
-            --error-color: #ff6b6b;
-            --success-color: #55efc4;
-            --timestamp-color: #8a8a9a;
+            --status-color: #d1d5db;
+            --error-color: #f87171;
+            --success-color: #34d399;
+            --timestamp-color: #9ca3af;
             --backdrop-filter: blur(10px);
         }
         
@@ -107,14 +107,11 @@
             margin: 0;
             flex-grow: 1;
             text-align: center;
-            background: linear-gradient(to right, #ffffff, #e6e6e6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
             text-shadow: 0px 2px 3px rgba(0, 0, 0, 0.1);
         }
         
         .theme-toggle {
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.2);
             border: none;
             color: white;
             cursor: pointer;
@@ -130,7 +127,7 @@
         }
         
         .theme-toggle:hover {
-            background-color: rgba(255, 255, 255, 0.25);
+            background-color: rgba(255, 255, 255, 0.3);
             transform: translateY(-2px);
         }
         
@@ -158,7 +155,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: radial-gradient(circle at center, rgba(110, 142, 251, 0.1) 0%, transparent 70%);
+            background: radial-gradient(circle at center, rgba(67, 97, 238, 0.1) 0%, transparent 70%);
             z-index: 0;
         }
         
@@ -208,7 +205,7 @@
             right: -5px;
             bottom: -5px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #6e8efb 0%, transparent 50%, #4a76a8 100%);
+            background: linear-gradient(135deg, #6a79ff 0%, transparent 50%, #4361ee 100%);
             z-index: -1;
             opacity: 0.5;
             animation: rotate 10s linear infinite;
@@ -232,7 +229,7 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
-            background: radial-gradient(circle at center, rgba(110, 142, 251, 0.05) 0%, transparent 70%);
+            background: radial-gradient(circle at center, rgba(67, 97, 238, 0.05) 0%, transparent 70%);
             z-index: 0;
         }
         
@@ -262,11 +259,15 @@
             backdrop-filter: blur(5px);
             -webkit-backdrop-filter: blur(5px);
             border: 1px solid rgba(255, 255, 255, 0.1);
+            transform-origin: left bottom;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         
         .my-message .message {
             background: var(--my-message-gradient);
             border-bottom-right-radius: 5px;
+            color: var(--text-color);
+            transform-origin: right bottom;
         }
         
         .message-nickname {
@@ -382,7 +383,7 @@
             left: 0;
             right: 0;
             top: 70px;
-            background-color: rgba(var(--container-bg), 0.95);
+            background-color: var(--container-bg);
             backdrop-filter: var(--backdrop-filter);
             -webkit-backdrop-filter: var(--backdrop-filter);
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
@@ -405,6 +406,29 @@
         .success {
             color: var(--success-color);
             background-color: rgba(46, 204, 113, 0.15);
+        }
+        
+        /* Пульсирующая точка для индикации онлайн */
+        .online-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #4caf50;
+            border-radius: 50%;
+            margin-left: 5px;
+            position: relative;
+        }
+        
+        .online-indicator::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #4caf50;
+            border-radius: 50%;
+            animation: pulse-online 1.5s infinite;
         }
         
         /* Анимации */
@@ -432,6 +456,17 @@
         @keyframes rotate {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes pulse-online {
+            0% { transform: scale(1); opacity: 1; }
+            70% { transform: scale(2); opacity: 0; }
+            100% { transform: scale(1); opacity: 0; }
+        }
+        
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
         }
         
         /* Адаптивность для мобильных устройств */
@@ -502,7 +537,7 @@
         
         <div id="chat-container" class="chat-container"></div>
         
-        <div id="status" class="status">Загрузка истории чата...</div>
+        <div id="status" class="status">Загрузка чата...</div>
         
         <form id="message-form" class="message-form">
             <div class="message-form-inner">
@@ -514,17 +549,30 @@
         </form>
     </div>
     
+    <!-- Подключаем Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
     <script>
-        // Настройка хранения сообщений
-        const USE_LOCAL_STORAGE = false; // Используем Telegram для хранения
+        // Инициализация Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCtOsyB2LRxpXb-fLjnbGVn-D-vUjU5sMA",
+            authDomain: "chatwave-app-987c7.firebaseapp.com",
+            databaseURL: "https://chatwave-app-987c7-default-rtdb.firebaseio.com",
+            projectId: "chatwave-app-987c7",
+            storageBucket: "chatwave-app-987c7.appspot.com",
+            messagingSenderId: "326433959886",
+            appId: "1:326433959886:web:f2c6365c9ee6d8a9b3bfd3"
+        };
         
-        // Telegram Bot API конфигурация
-        const TELEGRAM_BOT_TOKEN = '7549903504:AAEQo11lIs-Y0pQKzAJ7i7ck3OGQe-pomBE';
-        const TELEGRAM_CHAT_ID = '-1001950000000'; // Замените на ID вашего чата/группы
+        // Инициализация Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const messagesRef = database.ref('messages');
         
         let nickname = '';
         let messages = [];
-        let lastMessageId = 0; // Для отслеживания последнего полученного сообщения
+        let onlineUsers = {}; // Отслеживание онлайн пользователей
         let isDarkTheme = false; // По умолчанию светлая тема
         
         // DOM элементы
@@ -546,8 +594,7 @@
         function saveUserSettings() {
             const settings = {
                 nickname: nickname,
-                isDarkTheme: isDarkTheme,
-                lastMessageId: lastMessageId
+                isDarkTheme: isDarkTheme
             };
             localStorage.setItem('userSettings', JSON.stringify(settings));
         }
@@ -559,7 +606,6 @@
                 const parsedSettings = JSON.parse(settings);
                 isDarkTheme = parsedSettings.isDarkTheme;
                 nickname = parsedSettings.nickname;
-                lastMessageId = parsedSettings.lastMessageId || 0;
                 
                 // Применяем тему
                 if (isDarkTheme) {
@@ -573,6 +619,10 @@
                     nicknameContainer.style.display = 'none';
                     chatContainer.style.display = 'flex';
                     messageForm.style.display = 'block';
+                    
+                    // Обновляем статус пользователя на "онлайн"
+                    updateUserStatus(nickname, true);
+                    
                     showStatus(`Вы вошли как ${nickname}`, 'success');
                 }
             }
@@ -594,25 +644,6 @@
             }, 3000);
         }
         
-        // Загрузка сообщений из localStorage (как резервный вариант)
-        function loadMessagesFromLocalStorage() {
-            const savedMessages = localStorage.getItem('chatMessages');
-            if (savedMessages) {
-                try {
-                    return JSON.parse(savedMessages);
-                } catch (error) {
-                    console.error('Error parsing messages from localStorage:', error);
-                    return [];
-                }
-            }
-            return [];
-        }
-        
-        // Сохранение сообщений в localStorage (как резервный вариант)
-        function saveMessagesToLocalStorage() {
-            localStorage.setItem('chatMessages', JSON.stringify(messages));
-        }
-        
         // Переключение темы
         themeToggle.addEventListener('click', () => {
             isDarkTheme = !isDarkTheme;
@@ -632,33 +663,23 @@
         document.addEventListener('DOMContentLoaded', async () => {
             // Загружаем настройки пользователя
             loadUserSettings();
-            console.log('Используется Telegram бот для хранения сообщений');
             
-            if (USE_LOCAL_STORAGE) {
-                messages = loadMessagesFromLocalStorage();
-                showStatus('Чат загружен из локального хранилища', 'success');
+            // Начинаем слушать сообщения из Firebase
+            listenForMessages();
+            
+            // Слушаем статусы пользователей онлайн
+            database.ref('online').on('value', (snapshot) => {
+                if (snapshot.exists()) {
+                    onlineUsers = snapshot.val() || {};
+                }
+            });
+            
+            // Обработка закрытия окна или вкладки
+            window.addEventListener('beforeunload', () => {
                 if (nickname) {
-                    renderMessages();
+                    updateUserStatus(nickname, false);
                 }
-            } else {
-                try {
-                    showStatus('Загрузка сообщений из Telegram...', '');
-                    await loadChatHistory();
-                    showStatus('Чат загружен из Telegram', 'success');
-                    if (nickname) {
-                        renderMessages();
-                    }
-                } catch (error) {
-                    console.error('Ошибка загрузки сообщений из Telegram:', error);
-                    showStatus('Не удалось загрузить историю чата из Telegram', 'error');
-                    
-                    // Переключение на локальное хранилище при ошибке
-                    messages = loadMessagesFromLocalStorage();
-                    if (nickname) {
-                        renderMessages();
-                    }
-                }
-            }
+            });
         });
         
         // Обработчик отправки формы с никнеймом
@@ -669,9 +690,12 @@
                 nicknameContainer.style.display = 'none';
                 chatContainer.style.display = 'flex';
                 messageForm.style.display = 'block';
+                
+                // Обновляем статус пользователя на "онлайн"
+                updateUserStatus(nickname, true);
+                
                 showStatus(`Вы вошли как ${nickname}`, 'success');
                 saveUserSettings();
-                renderMessages();
             }
         });
         
@@ -683,43 +707,100 @@
                 const newMessage = {
                     nickname,
                     content: messageText,
-                    timestamp: new Date().toISOString()
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
                 };
-                
-                messages.push(newMessage);
-                renderMessages();
-                messageInput.value = '';
-                messageInput.focus();
-                
-                // Вибрация при отправке сообщения (для мобильных)
-                if (navigator.vibrate) {
-                    navigator.vibrate(50);
-                }
                 
                 // Показываем индикатор отправки
                 showStatus('Отправка сообщения...', '');
                 
                 try {
-                    if (USE_LOCAL_STORAGE) {
-                        saveMessagesToLocalStorage();
-                        showStatus('Сообщение сохранено локально', 'success');
-                    } else {
-                        await saveChatMessage(newMessage);
-                        showStatus('Сообщение отправлено', 'success');
-                    }
-                } catch (error) {
-                    console.error('Error saving message:', error);
-                    showStatus('Ошибка отправки. Сохранено локально', 'error');
+                    // Отправляем сообщение в Firebase
+                    await messagesRef.push(newMessage);
                     
-                    // Сохраняем в локальное хранилище при ошибке
-                    saveMessagesToLocalStorage();
+                    messageInput.value = '';
+                    messageInput.focus();
+                    
+                    // Вибрация при отправке сообщения (для мобильных)
+                    if (navigator.vibrate) {
+                        navigator.vibrate(50);
+                    }
+                    
+                    showStatus('Сообщение отправлено', 'success');
+                } catch (error) {
+                    console.error('Ошибка отправки сообщения:', error);
+                    showStatus('Ошибка отправки сообщения', 'error');
                 }
             }
         });
         
+        // Обновление статуса пользователя (онлайн/офлайн)
+        function updateUserStatus(userNickname, isOnline) {
+            if (!userNickname) return;
+            
+            const userStatusRef = database.ref('online/' + userNickname.replace(/[.#$[\]]/g, '_'));
+            
+            if (isOnline) {
+                // Пользователь онлайн
+                userStatusRef.set({
+                    status: true,
+                    lastSeen: firebase.database.ServerValue.TIMESTAMP
+                });
+                
+                // Установка статуса "офлайн" при отключении
+                userStatusRef.onDisconnect().update({
+                    status: false,
+                    lastSeen: firebase.database.ServerValue.TIMESTAMP
+                });
+            } else {
+                // Явно устанавливаем статус "офлайн"
+                userStatusRef.update({
+                    status: false,
+                    lastSeen: firebase.database.ServerValue.TIMESTAMP
+                });
+            }
+        }
+        
+        // Слушатель для новых сообщений
+        function listenForMessages() {
+            messagesRef.on('value', (snapshot) => {
+                showStatus('Обновление сообщений...', '');
+                
+                if (snapshot.exists()) {
+                    // Преобразуем данные Firebase в массив сообщений
+                    const messagesData = snapshot.val();
+                    messages = [];
+                    
+                    for (const key in messagesData) {
+                        if (messagesData.hasOwnProperty(key)) {
+                            const msg = messagesData[key];
+                            messages.push({
+                                id: key,
+                                nickname: msg.nickname,
+                                content: msg.content,
+                                timestamp: msg.timestamp
+                            });
+                        }
+                    }
+                    
+                    // Сортируем сообщения по времени
+                    messages.sort((a, b) => a.timestamp - b.timestamp);
+                    
+                    // Отображаем сообщения
+                    renderMessages();
+                    showStatus('Чат обновлен', 'success');
+                } else {
+                    messages = [];
+                    renderMessages();
+                    showStatus('Чат пуст. Отправьте первое сообщение!', 'success');
+                }
+            });
+        }
+        
         // Функция форматирования даты
-        function formatTimestamp(isoString) {
-            const date = new Date(isoString);
+        function formatTimestamp(timestamp) {
+            if (!timestamp) return '';
+            
+            const date = new Date(timestamp);
             const today = new Date();
             
             // Форматирование времени (часы:минуты)
@@ -747,10 +828,47 @@
             return `${day}.${month}.${year}, ${timeString}`;
         }
         
+        // Проверка статуса пользователя (онлайн/офлайн)
+        function isUserOnline(userNickname) {
+            if (!userNickname || !onlineUsers) return false;
+            
+            const normalizedNickname = userNickname.replace(/[.#$[\]]/g, '_');
+            return onlineUsers[normalizedNickname] && onlineUsers[normalizedNickname].status === true;
+        }
+        
         // Отображение сообщений в чате
         function renderMessages() {
             chatContainer.innerHTML = '';
-            messages.forEach(message => {
+            
+            if (messages.length === 0) {
+                const emptyMessage = document.createElement('div');
+                emptyMessage.className = 'empty-chat';
+                emptyMessage.textContent = 'Пока нет сообщений. Начните общение!';
+                emptyMessage.style.textAlign = 'center';
+                emptyMessage.style.color = 'var(--timestamp-color)';
+                emptyMessage.style.marginTop = '30px';
+                chatContainer.appendChild(emptyMessage);
+                return;
+            }
+            
+            let prevDate = null;
+            
+            messages.forEach((message, index) => {
+                // Добавляем разделитель дат, если сообщение в новый день
+                const messageDate = new Date(message.timestamp).toDateString();
+                if (prevDate !== messageDate) {
+                    const dateDiv = document.createElement('div');
+                    dateDiv.className = 'date-separator';
+                    dateDiv.textContent = formatTimestamp(message.timestamp).split(',')[0];
+                    dateDiv.style.textAlign = 'center';
+                    dateDiv.style.margin = '20px 0';
+                    dateDiv.style.color = 'var(--timestamp-color)';
+                    dateDiv.style.fontSize = '0.8rem';
+                    dateDiv.style.position = 'relative';
+                    chatContainer.appendChild(dateDiv);
+                    prevDate = messageDate;
+                }
+                
                 const isMyMessage = message.nickname === nickname;
                 
                 const messageElement = document.createElement('div');
@@ -761,7 +879,16 @@
                 
                 const nicknameElement = document.createElement('div');
                 nicknameElement.className = 'message-nickname';
-                nicknameElement.textContent = message.nickname;
+                
+                // Добавляем индикатор онлайн статуса
+                if (isUserOnline(message.nickname)) {
+                    const onlineIndicator = document.createElement('span');
+                    onlineIndicator.className = 'online-indicator';
+                    nicknameElement.textContent = message.nickname + ' ';
+                    nicknameElement.appendChild(onlineIndicator);
+                } else {
+                    nicknameElement.textContent = message.nickname;
+                }
                 
                 const contentElement = document.createElement('div');
                 contentElement.className = 'message-content';
@@ -769,13 +896,18 @@
                 
                 const timestampElement = document.createElement('div');
                 timestampElement.className = 'message-timestamp';
-                timestampElement.textContent = formatTimestamp(message.timestamp);
+                timestampElement.textContent = formatTimestamp(message.timestamp).split(',')[1].trim();
                 
                 messageContent.appendChild(nicknameElement);
                 messageContent.appendChild(contentElement);
                 messageContent.appendChild(timestampElement);
                 messageElement.appendChild(messageContent);
                 chatContainer.appendChild(messageElement);
+                
+                // Если это последнее сообщение, добавляем небольшую задержку анимации
+                if (index === messages.length - 1) {
+                    messageElement.style.animationDelay = '0.1s';
+                }
             });
             
             // Прокрутка к последнему сообщению с плавной анимацией
@@ -784,111 +916,6 @@
                 behavior: 'smooth'
             });
         }
-        
-        // Отправка сообщения через Telegram Bot API
-        async function saveChatMessage(message) {
-            try {
-                const messageText = `💬 ${message.nickname}: ${message.content}\n🕒 ${formatTimestamp(message.timestamp)}`;
-                const encodedMessage = encodeURIComponent(messageText);
-                
-                // Используем прокси для обхода CORS (CORS Anywhere или ваш собственный)
-                // Можно развернуть свой прокси на сервисах типа Heroku или Vercel
-                const corsProxy = 'https://cors-anywhere.herokuapp.com/';
-                const telegramApiUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&text=${encodedMessage}`;
-                
-                console.log('Отправка сообщения в Telegram...');
-                
-                // Прямой запрос к API Telegram (может не работать из-за CORS)
-                const response = await fetch(telegramApiUrl);
-                
-                if (!response.ok) {
-                    throw new Error(`Telegram API Error: ${response.status} ${response.statusText}`);
-                }
-                
-                const data = await response.json();
-                
-                if (data.ok) {
-                    console.log('Сообщение успешно отправлено в Telegram');
-                    // Сохраняем ID сообщения для отслеживания
-                    if (data.result && data.result.message_id) {
-                        lastMessageId = Math.max(lastMessageId, data.result.message_id);
-                        saveUserSettings(); // Сохраняем ID последнего сообщения
-                    }
-                } else {
-                    throw new Error(`Telegram Error: ${data.description}`);
-                }
-                
-                // Дополнительно сохраняем в localStorage для надежности
-                saveMessagesToLocalStorage();
-                
-            } catch (error) {
-                console.error('Ошибка отправки сообщения в Telegram:', error);
-                
-                // Альтернативный вариант через webhook/прокси
-                try {
-                    // Здесь может быть альтернативный способ отправки, например, через webhook
-                    console.log('Попытка отправки через альтернативный метод...');
-                    
-                    // Просто сохраняем локально как запасной вариант
-                    saveMessagesToLocalStorage();
-                    
-                } catch (backupError) {
-                    console.error('Ошибка резервного метода отправки:', backupError);
-                    throw error; // Пробрасываем исходную ошибку
-                }
-            }
-        }
-        
-        // Загрузка истории чата из Telegram
-        async function loadChatHistory() {
-            try {
-                console.log('Загрузка истории сообщений из Telegram...');
-                
-                // Используем локальное хранилище для истории сообщений
-                // В стандартном Telegram Bot API нет прямого метода для получения истории сообщений
-                // в общедоступном интерфейсе для веб-приложений без собственного бэкенда
-                const savedMessages = loadMessagesFromLocalStorage();
-                
-                if (savedMessages && savedMessages.length > 0) {
-                    messages = savedMessages;
-                    console.log(`Загружено ${messages.length} сообщений из локального кэша`);
-                } else {
-                    messages = [];
-                    console.log('Сообщения не найдены, начинаем с пустого чата');
-                }
-                
-                // Здесь можно реализовать дополнительную логику для синхронизации с Telegram
-                // через ваш собственный бэкенд или webhook, если необходимо
-                
-            } catch (error) {
-                console.error('Ошибка загрузки сообщений:', error);
-                messages = [];
-                throw error;
-            }
-        }
-        
-        // Периодический опрос новых сообщений
-        setInterval(async () => {
-            if (nickname && !USE_LOCAL_STORAGE) {
-                try {
-                    // Здесь можно реализовать проверку новых сообщений
-                    // через специальный бэкенд, webhook или другой метод
-                    
-                    // В текущей реализации используем локальное хранилище
-                    // и только для исходящих сообщений
-                    
-                    // Вибрация при получении новых сообщений (для мобильных)
-                    if (false) { // Логика определения новых сообщений
-                        if (navigator.vibrate) {
-                            navigator.vibrate([50, 100, 50]);
-                        }
-                        showStatus('Новые сообщения', 'success');
-                    }
-                } catch (error) {
-                    console.error('Ошибка при проверке новых сообщений:', error);
-                }
-            }
-        }, 10000); // Проверка каждые 10 секунд
     </script>
 </body>
 </html> 
