@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="P2P чат для общения напрямую через браузер">
+    <meta name="theme-color" content="#1a1d24">
+    <title>P2P Чат</title>
+    <!-- Подключение шрифтов и иконок -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Подключение стилей -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body data-theme="dark">
+    <div class="app-container">
+        <!-- Анимированный фон -->
+        <div class="weather-background">
+            <div class="particles-container"></div>
+        </div>
+
+        <div class="header">
+            <div class="logo">
+                <a href="index.html" class="home-link">
+                    <i class="fas fa-cloud-sun"></i>
+                    <h1>Weather</h1>
+                </a>
+            </div>
+            
+            <div class="header-controls">
+                <div class="theme-toggle">
+                    <input type="checkbox" id="theme-switch" class="theme-checkbox" checked>
+                    <label for="theme-switch" class="theme-label">
+                        <i class="fas fa-sun"></i>
+                        <i class="fas fa-moon"></i>
+                        <div class="ball"></div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Регистрация пользователя (показывается только при первом посещении) -->
+        <div class="username-setup" id="username-setup">
+            <div class="username-card">
+                <h2>Добро пожаловать в чат</h2>
+                <p>Для начала общения в режиме P2P, представьтесь</p>
+                
+                <div class="username-form">
+                    <div class="input-group">
+                        <label for="username-input">Ваше имя:</label>
+                        <input type="text" id="username-input" placeholder="Введите имя (3-20 символов)" maxlength="20">
+                        <p class="error-text" id="username-error"></p>
+                    </div>
+                    
+                    <button id="save-username" class="primary-button">Начать общение</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Основной интерфейс чата -->
+        <div class="chat-interface" id="chat-interface" style="display: none;">
+            <div class="chat-container">
+                <!-- Боковая панель с контактами -->
+                <div class="contacts-sidebar">
+                    <div class="user-profile">
+                        <div class="user-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="user-info">
+                            <h3 id="current-username">Пользователь</h3>
+                            <p id="user-id" class="user-id">ID: loading...</p>
+                            <button id="copy-id" class="copy-id-button" title="Скопировать ID">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="contacts-header">
+                        <h3>Контакты</h3>
+                        <button id="add-contact" class="add-contact-button" title="Добавить контакт">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="contacts-list" id="contacts-list">
+                        <!-- Контакты будут добавлены через JavaScript -->
+                    </div>
+                </div>
+                
+                <!-- Основная часть чата -->
+                <div class="chat-main">
+                    <!-- Заголовок чата -->
+                    <div class="chat-header">
+                        <h3 id="chat-recipient">Выберите контакт для начала общения</h3>
+                    </div>
+                    
+                    <!-- Сообщения -->
+                    <div class="chat-messages-container" id="chat-messages">
+                        <div class="welcome-message">
+                            <i class="fas fa-comments"></i>
+                            <h3>Добро пожаловать в P2P чат!</h3>
+                            <p>Чат работает напрямую между браузерами без сервера</p>
+                            <p>Ваш уникальный ID: <span id="welcome-user-id"></span></p>
+                            <p>Поделитесь своим ID с друзьями, чтобы они могли добавить вас в контакты</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Ввод сообщения -->
+                    <div class="message-input-container" id="message-input-container">
+                        <input type="text" id="message-input" placeholder="Введите сообщение..." disabled>
+                        <button id="send-message" disabled>
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Модальное окно для добавления контакта -->
+        <div class="modal" id="add-contact-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Добавить контакт</h3>
+                    <button class="close-modal-button" id="close-modal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="input-group">
+                        <label for="contact-id">ID контакта:</label>
+                        <input type="text" id="contact-id" placeholder="Введите ID контакта">
+                    </div>
+                    <div class="input-group">
+                        <label for="contact-name">Имя контакта:</label>
+                        <input type="text" id="contact-name" placeholder="Введите имя контакта">
+                    </div>
+                    <p class="error-text" id="contact-error"></p>
+                </div>
+                <div class="modal-footer">
+                    <button id="add-contact-submit" class="primary-button">Добавить</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="toasts-container" id="toasts-container">
+            <!-- Тосты для уведомлений будут добавляться через JavaScript -->
+        </div>
+
+        <footer class="app-footer">
+            <p>&copy; 2023 Weather App - P2P Chat</p>
+            <div class="footer-links">
+                <a href="index.html" class="footer-link">Погода</a>
+                <a href="#" class="footer-link">Настройки</a>
+                <a href="#" class="footer-link">О приложении</a>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Подключение JavaScript -->
+    <script src="chat.js"></script>
+</body>
+</html> 
