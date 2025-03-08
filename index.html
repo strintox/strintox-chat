@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="Погодное приложение с прогнозом на 10 дней и чатом для обсуждения погоды">
+    <meta name="theme-color" content="#3498db">
+    <title>Погода в мире</title>
+    <!-- Подключение шрифтов и иконок -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Подключение Leaflet для карты -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <!-- Подключение стилей -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Анимированный фон -->
+        <div class="weather-background">
+            <div class="particles-container"></div>
+        </div>
+
+        <div class="header">
+            <div class="logo">
+                <i class="fas fa-cloud-sun"></i>
+                <h1>Weather</h1>
+            </div>
+            
+            <div class="header-controls">
+                <button id="favorites-button" class="favorites-access-button" title="Избранные города">
+                    <i class="fas fa-star"></i>
+                </button>
+                <div class="theme-toggle">
+                    <input type="checkbox" id="theme-switch" class="theme-checkbox">
+                    <label for="theme-switch" class="theme-label">
+                        <i class="fas fa-sun"></i>
+                        <i class="fas fa-moon"></i>
+                        <div class="ball"></div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="search-container">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="search-input" placeholder="Поиск города...">
+                <button id="search-button">
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+            <div class="location-button" id="location-button" title="Определить моё местоположение">
+                <i class="fas fa-location-arrow"></i>
+            </div>
+        </div>
+
+        <div class="error-message" id="error-message">
+            Город не найден. Пожалуйста, проверьте правильность названия.
+        </div>
+
+        <div class="weather-section" id="weather-info">
+            <div class="weather-card">
+                <!-- Информация о локации -->
+                <div class="location-info">
+                    <div class="city-container">
+                        <div id="country-flag"></div>
+                        <h2 id="city-name">Загрузка...</h2>
+                        <div class="favorite-button" id="favorite-button">
+                            <i class="far fa-heart"></i>
+                        </div>
+                    </div>
+                    <p id="date-time">Загрузка...</p>
+                </div>
+
+                <!-- Текущая погода -->
+                <div class="current-weather">
+                    <div class="weather-main">
+                        <div class="weather-icon-large">
+                            <img id="weather-icon" src="" alt="Погода" class="weather-icon">
+                        </div>
+                        <div class="temp-container">
+                            <span id="temperature" class="temperature">--°C</span>
+                            <p id="weather-description" class="description">Загрузка...</p>
+                        </div>
+                    </div>
+
+                    <!-- Карточки с метриками -->
+                    <div class="metrics-container">
+                        <div class="metric-card">
+                            <i class="fas fa-temperature-high"></i>
+                            <div class="metric-info">
+                                <h3>Ощущается</h3>
+                                <p id="feels-like">--°C</p>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <i class="fas fa-wind"></i>
+                            <div class="metric-info">
+                                <h3>Ветер</h3>
+                                <p id="wind">-- км/ч</p>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <i class="fas fa-tint"></i>
+                            <div class="metric-info">
+                                <h3>Влажность</h3>
+                                <p id="humidity">--%</p>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <i class="fas fa-compress-arrows-alt"></i>
+                            <div class="metric-info">
+                                <h3>Давление</h3>
+                                <p id="pressure">-- мм рт.ст.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Переключатель вкладок -->
+            <div class="tab-container">
+                <button class="tab-button active" data-tab="forecast">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Прогноз</span>
+                </button>
+                <button class="tab-button" data-tab="hourly">
+                    <i class="fas fa-clock"></i>
+                    <span>Почасовой</span>
+                </button>
+                <button class="tab-button" data-tab="map">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>Карта</span>
+                </button>
+            </div>
+
+            <!-- Содержимое вкладок -->
+            <div class="tab-content">
+                <!-- Вкладка с прогнозом на 10 дней -->
+                <div class="tab-panel active" id="forecast-panel">
+                    <h3 class="section-title">Прогноз на 10 дней</h3>
+                    <div class="forecast-container" id="forecast-container">
+                        <div class="loading-indicator">
+                            <div class="spinner"></div>
+                            <p>Загружаем прогноз...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Вкладка с почасовым прогнозом -->
+                <div class="tab-panel" id="hourly-panel">
+                    <h3 class="section-title">Почасовой прогноз</h3>
+                    <div class="hourly-container" id="hourly-container">
+                        <div class="loading-indicator">
+                            <div class="spinner"></div>
+                            <p>Загружаем данные...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Вкладка с картой -->
+                <div class="tab-panel" id="map-panel">
+                    <h3 class="section-title">Местоположение на карте</h3>
+                    <div class="map-container" id="map">
+                        <div class="loading-indicator">
+                            <div class="spinner"></div>
+                            <p>Загружаем карту...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="drawer-handle" id="drawer-handle">
+            <div class="handle-icon">
+                <i class="fas fa-chevron-up"></i>
+            </div>
+            <span>История поиска</span>
+        </div>
+
+        <div class="drawer" id="search-history-drawer">
+            <h3>История поиска</h3>
+            <div class="search-history-list" id="search-history">
+                <!-- История поиска будет добавлена через JavaScript -->
+                <div class="empty-history">
+                    <i class="fas fa-history"></i>
+                    <p>История поиска пуста</p>
+                </div>
+            </div>
+            <button class="clear-history" id="clear-history">Очистить историю</button>
+        </div>
+
+        <div class="toasts-container" id="toasts-container">
+            <!-- Тосты для уведомлений будут добавляться через JavaScript -->
+        </div>
+
+        <!-- Панель избранных городов -->
+        <div class="favorites-panel" id="favorites-panel">
+            <div class="favorites-header">
+                <h3>Избранные города</h3>
+                <button id="close-favorites" class="close-button">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="favorites-list" id="favorites-list">
+                <!-- Список избранных городов будет добавлен через JavaScript -->
+                <div class="empty-favorites">
+                    <i class="fas fa-star"></i>
+                    <p>У вас пока нет избранных городов</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Чат панель -->
+        <div class="chat-panel" id="chat-panel">
+            <div class="chat-header">
+                <h3>Погодный чат</h3>
+                <div class="chat-controls">
+                    <button id="minimize-chat" class="minimize-chat-button">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="chat-container">
+                <div class="chat-messages" id="chat-messages">
+                    <!-- Сообщения будут добавляться сюда динамически -->
+                    <div class="system-message">Подключение к чату...</div>
+                </div>
+                <div class="chat-input-container">
+                    <input type="text" id="chat-input" placeholder="Введите сообщение..." disabled>
+                    <button id="send-message" disabled>
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Форма регистрации имени пользователя -->
+            <div class="username-modal" id="username-modal">
+                <div class="username-container">
+                    <h3>Представьтесь для чата</h3>
+                    <p>Введите уникальное имя пользователя</p>
+                    <div class="username-input-container">
+                        <input type="text" id="username-input" placeholder="Ваше имя">
+                        <p class="username-error" id="username-error"></p>
+                    </div>
+                    <button id="save-username">Начать общение</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Кнопка для открытия чата -->
+        <button class="chat-button" id="chat-button">
+            <i class="fas fa-comments"></i>
+        </button>
+
+        <footer class="app-footer">
+            <p>&copy; 2023 Weather App</p>
+            <div class="footer-links">
+                <a href="#" class="footer-link">API</a>
+                <a href="#" class="footer-link">Настройки</a>
+                <a href="#" class="footer-link">О приложении</a>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Подключение JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html> 
