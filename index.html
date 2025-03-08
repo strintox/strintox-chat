@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Strintox Messenger</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Auth Container (Login/Register) -->
+        <div id="auth-container" class="auth-container">
+            <div class="auth-box">
+                <div class="logo">
+                    <i class="fas fa-comments"></i>
+                    <h1>Strintox</h1>
+                </div>
+                
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="login">Вход</button>
+                    <button class="tab-btn" data-tab="register">Регистрация</button>
+                </div>
+                
+                <!-- Login Form -->
+                <div id="login-tab" class="tab-content active">
+                    <form id="login-form">
+                        <div class="input-group">
+                            <i class="fas fa-envelope"></i>
+                            <input type="email" id="login-email" placeholder="Email" required>
+                        </div>
+                        <div class="input-group">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="login-password" placeholder="Пароль" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Войти</button>
+                    </form>
+                </div>
+                
+                <!-- Register Form -->
+                <div id="register-tab" class="tab-content">
+                    <form id="register-form">
+                        <div class="input-group">
+                            <i class="fas fa-user"></i>
+                            <input type="text" id="register-name" placeholder="Уникальный никнейм" required>
+                        </div>
+                        <div class="input-group">
+                            <i class="fas fa-envelope"></i>
+                            <input type="email" id="register-email" placeholder="Email" required>
+                        </div>
+                        <div class="input-group">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="register-password" placeholder="Пароль" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
+                    </form>
+                </div>
+                
+                <div id="auth-error" class="error-message"></div>
+            </div>
+        </div>
+        
+        <!-- Chat Container -->
+        <div id="chat-container" class="chat-container hidden">
+            <!-- Sidebar for chats list -->
+            <div id="sidebar" class="sidebar">
+                <div class="sidebar-header">
+                    <div class="logo">
+                        <i class="fas fa-comments"></i>
+                        <h2>Strintox</h2>
+                    </div>
+                    <button id="logout-btn" class="btn-icon">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+                
+                <div class="user-profile">
+                    <div class="avatar avatar-profile">
+                        <i class="fas fa-user default-avatar"></i>
+                        <img id="user-avatar" class="user-avatar hidden" src="" alt="Аватар">
+                        <div class="avatar-upload">
+                            <label for="avatar-input">
+                                <i class="fas fa-camera"></i>
+                            </label>
+                            <input type="file" id="avatar-input" accept="image/*" hidden>
+                        </div>
+                    </div>
+                    <div id="user-name" class="user-name">Загрузка...</div>
+                    <div id="user-status" class="user-status">
+                        <span class="status-indicator"></span>
+                        <span class="status-text">Не в сети</span>
+                    </div>
+                </div>
+                
+                <div class="search-container">
+                    <div class="input-group">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="search-input" placeholder="Поиск чатов...">
+                    </div>
+                </div>
+                
+                <div class="chat-list" id="chat-list">
+                    <!-- Chat list will be populated by JavaScript -->
+                </div>
+                
+                <button id="new-chat-btn" class="btn btn-primary new-chat-btn">
+                    <i class="fas fa-plus"></i> Новый чат
+                </button>
+            </div>
+            
+            <div class="chat-area">
+                <div id="empty-chat" class="empty-chat">
+                    <div class="empty-chat-icon">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                    <h2>Выберите чат или начните новый</h2>
+                    <p>Общение становится проще с Strintox</p>
+                    <!-- Add button for mobile users to open the chat list -->
+                    <button id="show-chats-btn" class="btn btn-primary show-chats-btn">
+                        <i class="fas fa-list"></i> Перейти к выбору чатов
+                    </button>
+                </div>
+                
+                <div id="active-chat" class="active-chat hidden">
+                    <div class="chat-header">
+                        <!-- Add menu toggle button for mobile -->
+                        <button id="menu-toggle" class="menu-toggle">
+                            <i class="fas fa-bars"></i>
+                        </button>
+                        <div class="chat-header-info">
+                            <div class="avatar">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div id="chat-name" class="chat-name">Имя чата</div>
+                        </div>
+                    </div>
+                    
+                    <div id="messages-container" class="messages-container">
+                        <!-- Messages will be populated by JavaScript -->
+                    </div>
+                    
+                    <div class="message-input">
+                        <form id="message-form">
+                            <div class="input-group">
+                                <i class="fas fa-comment"></i>
+                                <input type="text" id="message-input" placeholder="Введите сообщение..." autocomplete="off">
+                                <button type="submit" class="btn-icon send-btn">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- New Chat Modal -->
+        <div id="new-chat-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Найти пользователя</h3>
+                    <button id="close-modal-btn" class="btn-icon">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="search-options">
+                        <div id="search-by-username" class="search-option active">Поиск по нику</div>
+                        <div id="search-by-email" class="search-option">Поиск по email</div>
+                    </div>
+                    
+                    <div id="username-search" class="search-field">
+                        <div class="input-group">
+                            <i class="fas fa-user"></i>
+                            <input type="text" id="new-chat-username" placeholder="Введите ник пользователя">
+                        </div>
+                    </div>
+                    
+                    <div id="email-search" class="search-field hidden">
+                        <div class="input-group">
+                            <i class="fas fa-envelope"></i>
+                            <input type="email" id="new-chat-email" placeholder="Введите email пользователя">
+                        </div>
+                    </div>
+                    
+                    <button id="start-chat-btn" class="btn btn-primary">Начать чат</button>
+                    <div id="new-chat-error" class="error-message"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
+    
+    <!-- Main JS -->
+    <script src="script.js"></script>
+</body>
+</html> 
