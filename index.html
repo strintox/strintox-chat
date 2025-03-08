@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>ДаркЧат</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Экран загрузки -->
+    <div id="loading-screen">
+        <div class="loader"></div>
+        <p>Подключение...</p>
+    </div>
+
+    <!-- Экран приветствия/входа -->
+    <div id="welcome-screen" class="screen hidden">
+        <div class="welcome-container">
+            <h1>ДаркЧат</h1>
+            <p class="welcome-subtitle">Безопасное общение в сети</p>
+            <div id="user-id-container" class="user-id-container">
+                <p>Ваш уникальный ID:</p>
+                <div class="id-display-container">
+                    <span id="user-id-display"></span>
+                    <button id="copy-id-btn" class="icon-btn">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+                <p class="id-info">Поделитесь этим ID, чтобы другие могли найти вас</p>
+            </div>
+            <div class="connect-container">
+                <input type="text" id="connect-id-input" placeholder="Введите ID друга">
+                <button id="connect-btn" class="primary-btn">Подключиться</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Экран списка чатов -->
+    <div id="chats-screen" class="screen hidden">
+        <div class="header">
+            <h2>Сообщения</h2>
+            <button id="new-chat-btn" class="icon-btn">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+        <div id="chats-list" class="chats-list">
+            <!-- Чаты будут добавлены динамически -->
+        </div>
+    </div>
+
+    <!-- Экран чата -->
+    <div id="chat-screen" class="screen hidden">
+        <div class="chat-header">
+            <button id="back-btn" class="icon-btn">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h3 id="chat-title">Собеседник</h3>
+        </div>
+        <div id="messages-container" class="messages-container">
+            <!-- Сообщения будут добавлены динамически -->
+        </div>
+        <div class="message-input-container">
+            <input type="text" id="message-input" placeholder="Введите сообщение">
+            <button id="send-message-btn" class="icon-btn">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Экран ввода ID -->
+    <div id="connect-screen" class="screen hidden">
+        <div class="connect-container">
+            <button id="connect-back-btn" class="icon-btn">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h2>Новый чат</h2>
+            <input type="text" id="new-connect-id-input" placeholder="Введите ID друга">
+            <button id="new-connect-btn" class="primary-btn">Подключиться</button>
+        </div>
+    </div>
+
+    <!-- Всплывающие уведомления -->
+    <div id="notification" class="notification hidden"></div>
+
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/p2p.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html> 
