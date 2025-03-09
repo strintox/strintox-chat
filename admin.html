@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strintox Admin - Панель управления новостями</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Улучшенные стили для страницы администратора */
+        .admin-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        
+        .admin-header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .admin-header h1 {
+            font-size: 2.2rem;
+            color: var(--text-color);
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .admin-header p {
+            color: var(--secondary-text-color);
+            font-size: 1.1rem;
+        }
+        
+        .admin-panel {
+            background-color: var(--card-bg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--card-shadow);
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid var(--border-color);
+            display: flex; /* Use flexbox for the main layout */
+            gap: 30px;
+        }
+        
+        /* Left sidebar with admin controls */
+        .admin-sidebar {
+            width: 300px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .admin-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 0 0 20px 0;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .admin-title i {
+            color: var(--primary-color);
+        }
+        
+        .admin-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .admin-btn {
+            padding: 12px 15px;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            text-align: left;
+            width: 100%;
+        }
+        
+        .admin-btn i {
+            width: 20px;
+            text-align: center;
+        }
+        
+        .admin-btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .admin-btn-primary:hover {
+            background-color: var(--secondary-color);
+        }
+        
+        .admin-btn-secondary {
+            background-color: var(--light-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+        
+        .admin-btn-secondary:hover {
+            background-color: var(--input-bg);
+        }
+        
+        .admin-btn-danger {
+            background-color: #e74c3c;
+            color: white;
+            margin-top: auto; /* Push to bottom */
+        }
+        
+        .admin-btn-danger:hover {
+            background-color: #c0392b;
+        }
+        
+        /* Right content area */
+        .admin-content {
+            flex-grow: 1;
+            min-width: 0; /* Prevent flex item from overflowing */
+        }
+        
+        .news-list {
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            background-color: var(--light-bg);
+        }
+        
+        .news-item {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            background-color: var(--card-bg);
+            position: relative;
+        }
+        
+        .news-item:last-child {
+            border-bottom: none;
+        }
+        
+        .news-item-title {
+            font-weight: 500;
+            color: var(--text-color);
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+            padding-right: 170px; /* Space for buttons */
+        }
+        
+        .news-item-date {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        
+        .news-item-actions {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .news-action-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        
+        .btn-edit {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .btn-edit:hover {
+            background-color: #2980b9;
+        }
+        
+        .btn-delete {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .btn-delete:hover {
+            background-color: #c0392b;
+        }
+        
+        .no-news {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+            background-color: var(--card-bg);
+        }
+        
+        .no-news i {
+            font-size: 3rem;
+            color: var(--border-color);
+            margin-bottom: 15px;
+            opacity: 0.7;
+        }
+        
+        .no-news p {
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+        }
+        
+        .admin-footer {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        
+        /* Улучшенные стили для экрана логина */
+        .admin-login-container {
+            max-width: 450px;
+            margin: 60px auto;
+            padding: 35px;
+            background-color: var(--card-bg);
+            border-radius: var(--border-radius);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border-color);
+        }
+        
+        .admin-login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .admin-login-header h2 {
+            font-size: 1.8rem;
+            color: var(--text-color);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .admin-login-header h2 i {
+            color: var(--primary-color);
+        }
+        
+        .admin-login-header p {
+            color: var(--secondary-text-color);
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+        
+        .admin-login-form .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .admin-login-form label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 500;
+            color: var(--text-color);
+            font-size: 1rem;
+        }
+        
+        .admin-login-form input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+        
+        .admin-login-form input:focus {
+            border-color: var(--primary-color);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0, 145, 234, 0.2);
+        }
+        
+        .admin-login-form button {
+            width: 100%;
+            padding: 14px;
+            margin-top: 10px;
+            font-size: 1rem;
+            font-weight: 500;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.2s;
+        }
+        
+        .admin-login-form button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .admin-login-error {
+            background-color: rgba(231, 76, 60, 0.1);
+            border-left: 4px solid #e74c3c;
+            padding: 15px;
+            color: #c0392b;
+            margin-bottom: 25px;
+            border-radius: 6px;
+            display: none;
+            font-weight: 500;
+        }
+        
+        .admin-login-error i {
+            margin-right: 8px;
+        }
+        
+        .admin-login-error.show {
+            display: flex;
+            align-items: center;
+        }
+        
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .admin-header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .admin-panel {
+                flex-direction: column;
+                padding: 20px;
+                gap: 20px;
+            }
+            
+            .admin-sidebar {
+                width: 100%;
+            }
+            
+            .admin-title {
+                margin-bottom: 15px;
+                font-size: 1.3rem;
+            }
+            
+            .news-item {
+                padding: 15px;
+            }
+            
+            .news-item-title {
+                padding-right: 0;
+                margin-bottom: 30px; /* Space for buttons below */
+            }
+            
+            .news-item-actions {
+                position: relative;
+                top: auto;
+                right: auto;
+                margin-top: 15px;
+                justify-content: flex-end;
+            }
+            
+            .admin-login-container {
+                padding: 25px 20px;
+                margin: 30px 15px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .news-item-actions {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+            }
+            
+            .news-action-btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+        
+        /* Улучшенные стили для модальных окон */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            border-radius: 8px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            max-width: 500px;
+            width: 95%;
+            background-color: var(--card-bg);
+            overflow: hidden;
+        }
+        
+        .modal-header {
+            background-color: #0099ff;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .modal-header h2 {
+            font-size: 1.2rem;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+        }
+        
+        .modal-header .close-modal {
+            color: white;
+            font-size: 1.3rem;
+            opacity: 0.8;
+            padding: 0;
+            background: none;
+            border: none;
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.2s;
+        }
+        
+        .modal-header .close-modal:hover {
+            opacity: 1;
+        }
+        
+        .modal-body {
+            padding: 25px;
+        }
+        
+        /* Упрощенный стиль для модального окна подтверждения удаления */
+        #confirm-delete-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #confirm-delete-modal.active {
+            display: flex;
+        }
+        
+        .delete-dialog {
+            width: 460px;
+            border-radius: 4px;
+            overflow: hidden;
+            background-color: #1a2035;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .delete-header {
+            background-color: #00a2ff;
+            color: white;
+            padding: 12px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .delete-header h3 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .delete-header .close-dialog {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .delete-body {
+            padding: 20px;
+            color: white;
+            text-align: center;
+        }
+        
+        .delete-message {
+            margin-bottom: 25px;
+            font-size: 1rem;
+            line-height: 1.4;
+        }
+        
+        .delete-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        
+        .delete-btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            min-width: 100px;
+        }
+        
+        .delete-btn-primary {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .delete-btn-secondary {
+            background-color: #7f8c8d;
+            color: white;
+        }
+        
+        /* Стили для редактора новостей */
+        #editor-dialog {
+            width: 700px;
+            border-radius: 4px;
+            overflow: hidden;
+            background-color: #1a2035;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .editor-header {
+            background-color: #00a2ff;
+            color: white;
+            padding: 12px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .editor-header h3 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .editor-header .close-editor {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .editor-body {
+            padding: 20px;
+            color: white;
+        }
+        
+        .editor-field {
+            margin-bottom: 20px;
+        }
+        
+        .editor-field label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        
+        .editor-field input, 
+        .editor-field textarea {
+            width: 100%;
+            padding: 10px;
+            background-color: #2a344d;
+            border: 1px solid #374262;
+            border-radius: 4px;
+            color: white;
+            font-size: 0.95rem;
+        }
+        
+        .editor-field textarea {
+            min-height: 300px;
+            resize: vertical;
+        }
+        
+        .editor-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-top: 25px;
+        }
+        
+        .editor-btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            min-width: 120px;
+            justify-content: center;
+        }
+        
+        .editor-btn-primary {
+            background-color: #00a2ff;
+            color: white;
+        }
+        
+        .editor-btn-secondary {
+            background-color: #7f8c8d;
+            color: white;
+        }
+    </style>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-top">
+                <div class="logo">
+                    <i class="fas fa-lock"></i>
+                    <h1>Strintox Admin</h1>
+                </div>
+                <div class="header-controls">
+                    <a href="index.html" class="weather-link">
+                        <i class="fas fa-cloud-sun"></i> Strintox Weather
+                    </a>
+                    <a href="news.html" class="news-link">
+                        <i class="fas fa-newspaper"></i> Strintox News
+                    </a>
+                    <div class="theme-switch-wrapper">
+                        <span class="theme-icon"><i class="fas fa-sun"></i></span>
+                        <label class="theme-switch">
+                            <input type="checkbox" id="theme-toggle">
+                            <span class="slider round"></span>
+                        </label>
+                        <span class="theme-icon"><i class="fas fa-moon"></i></span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Экран логина в админ-панель (показывается до авторизации) -->
+        <div id="admin-login-section" class="admin-login-container">
+            <div class="admin-login-header">
+                <h2><i class="fas fa-lock"></i> Вход в админ-панель</h2>
+                <p>Введите логин и пароль для доступа к управлению новостями</p>
+            </div>
+            
+            <div id="admin-login-error" class="admin-login-error">
+                <i class="fas fa-exclamation-circle"></i> Неверный логин или пароль
+            </div>
+            
+            <form id="admin-login-form" class="admin-login-form">
+                <div class="form-group">
+                    <label for="admin-username">Логин</label>
+                    <input type="text" id="admin-username" placeholder="Введите логин администратора" required>
+                </div>
+                <div class="form-group">
+                    <label for="admin-password">Пароль</label>
+                    <input type="password" id="admin-password" placeholder="Введите пароль" required>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-sign-in-alt"></i> Войти
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Основной раздел админ-панели (показывается после авторизации) -->
+        <main id="admin-panel-section" class="admin-container" style="display: none;">
+            <div class="admin-header">
+                <h1><i class="fas fa-tools"></i> Панель администратора</h1>
+                <p>Управление новостями и контентом сайта Strintox</p>
+            </div>
+            
+            <div class="admin-panel">
+                <!-- Left sidebar with controls -->
+                <div class="admin-sidebar">
+                    <h2 class="admin-title"><i class="fas fa-newspaper"></i> Управление новостями</h2>
+                    
+                    <div class="admin-controls">
+                        <button id="create-news-button" class="admin-btn admin-btn-primary">
+                            <i class="fas fa-plus"></i> Опубликовать новость
+                        </button>
+                        
+                        <button id="refresh-news-button" class="admin-btn admin-btn-secondary">
+                            <i class="fas fa-sync"></i> Обновить список
+                        </button>
+                        
+                        <button id="logout-button" class="admin-btn admin-btn-danger">
+                            <i class="fas fa-sign-out-alt"></i> Выйти
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Right content area -->
+                <div class="admin-content">
+                    <div id="news-list" class="news-list">
+                        <div class="loading-indicator">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>Загрузка списка новостей...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; 2025 • Strintox Weather</p>
+        </footer>
+    </div>
+    
+    <!-- Модальное окно для создания/редактирования новостей -->
+    <div id="news-editor-modal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-newspaper"></i> <span id="editor-title">Создание новости</span></h2>
+                <button class="close-modal" data-modal="news-editor-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="news-title">Заголовок</label>
+                    <input type="text" id="news-title" placeholder="Введите заголовок новости" required>
+                    <input type="hidden" id="news-id" value="">
+                </div>
+                
+                <!-- Панель инструментов форматирования -->
+                <div class="editor-toolbar">
+                    <button type="button" onclick="applyFormatting('bold')" title="Жирный текст">
+                        <i class="fas fa-bold"></i>
+                    </button>
+                    <button type="button" onclick="applyFormatting('italic')" title="Курсив">
+                        <i class="fas fa-italic"></i>
+                    </button>
+                    <button type="button" onclick="applyFormatting('underline')" title="Подчеркнутый">
+                        <i class="fas fa-underline"></i>
+                    </button>
+                    <div class="toolbar-divider"></div>
+                    <button type="button" onclick="applyFormatting('alignLeft')" title="По левому краю">
+                        <i class="fas fa-align-left"></i>
+                    </button>
+                    <button type="button" onclick="applyFormatting('alignCenter')" title="По центру">
+                        <i class="fas fa-align-center"></i>
+                    </button>
+                    <button type="button" onclick="applyFormatting('alignRight')" title="По правому краю">
+                        <i class="fas fa-align-right"></i>
+                    </button>
+                    <div class="toolbar-divider"></div>
+                    <select id="fontSize" onchange="applyFormatting('fontSize')">
+                        <option value="">Размер шрифта</option>
+                        <option value="1">Очень маленький</option>
+                        <option value="2">Маленький</option>
+                        <option value="3">Обычный</option>
+                        <option value="4">Средний</option>
+                        <option value="5">Большой</option>
+                        <option value="6">Очень большой</option>
+                        <option value="7">Огромный</option>
+                    </select>
+                    <input type="color" id="textColor" onchange="applyFormatting('color')" title="Цвет текста">
+                    <button type="button" onclick="applyFormatting('removeFormat')" title="Удалить форматирование">
+                        <i class="fas fa-eraser"></i>
+                    </button>
+                </div>
+                
+                <div class="form-group">
+                    <label for="news-content">Содержание</label>
+                    <div id="news-content" contenteditable="true" class="rich-text-editor" placeholder="Введите содержание новости"></div>
+                </div>
+                
+                <div class="form-buttons">
+                    <button id="publish-button" class="btn-primary" onclick="publishNews()">
+                        <i class="fas fa-paper-plane"></i> Опубликовать
+                    </button>
+                    <button class="btn-secondary" data-modal="news-editor-modal">
+                        <i class="fas fa-times"></i> Отмена
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Модальное окно подтверждения удаления -->
+    <div id="confirm-delete-modal">
+        <div class="delete-dialog">
+            <div class="delete-header">
+                <h3><i class="fas fa-exclamation-triangle"></i> Подтверждение удаления</h3>
+                <button class="close-dialog" id="close-delete-dialog"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="delete-body">
+                <p class="delete-message">Вы действительно хотите удалить эту новость? Это действие невозможно отменить.</p>
+                <input type="hidden" id="delete-news-id" value="">
+                <div class="delete-actions">
+                    <button type="button" id="confirm-delete-button" class="delete-btn delete-btn-primary">
+                        <i class="fas fa-trash"></i> Удалить
+                    </button>
+                    <button type="button" id="cancel-delete-button" class="delete-btn delete-btn-secondary">
+                        Отмена
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Конфигурация Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAAdu7bWt9F2GF1W9qEzfc2f_y6LCqMM14",
+            authDomain: "strintox-3a2b8.firebaseapp.com",
+            projectId: "strintox-3a2b8",
+            storageBucket: "strintox-3a2b8.appspot.com",
+            messagingSenderId: "12688530154",
+            appId: "1:12688530154:web:da86782e5c3261c6c35593"
+        };
+
+        // Глобальные переменные
+        let db, auth;
+        let isAuthenticated = false;
+        let currentEditingId = null;
+        let isEditing = false;
+
+        // Инициализация Firebase
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            
+            db = firebase.firestore();
+            auth = firebase.auth();
+            
+            console.log("Firebase успешно инициализирован");
+        } catch (error) {
+            console.error("Ошибка инициализации Firebase:", error);
+            alert("Произошла ошибка при подключении к базе данных.");
+        }
+        
+        // Проверка авторизации при загрузке страницы
+        function checkAuthentication() {
+            // Проверяем, есть ли сохраненная аутентификация
+            const adminAuth = localStorage.getItem('strintox_admin_auth');
+            if (adminAuth === 'authenticated') {
+                showAdminPanel();
+                loadNewsList();
+            } else {
+                showLoginForm();
+            }
+        }
+        
+        // Показать форму авторизации
+        function showLoginForm() {
+            document.getElementById('admin-login-section').style.display = 'block';
+            document.getElementById('admin-panel-section').style.display = 'none';
+            isAuthenticated = false;
+        }
+        
+        // Показать панель администратора
+        function showAdminPanel() {
+            document.getElementById('admin-login-section').style.display = 'none';
+            document.getElementById('admin-panel-section').style.display = 'block';
+            isAuthenticated = true;
+        }
+        
+        // Обработка входа в админ-панель
+        function handleAdminLogin(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('admin-username').value;
+            const password = document.getElementById('admin-password').value;
+            
+            // Показываем индикатор загрузки
+            const loginButton = document.querySelector('#admin-login-form button');
+            const originalButtonText = loginButton.innerHTML;
+            loginButton.disabled = true;
+            loginButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Проверка...';
+            
+            // Проверяем, что введен корректный email strintox@gmail.com
+            if (username === 'strintox@gmail.com') {
+                // Вход через Firebase Authentication
+                auth.signInWithEmailAndPassword(username, password)
+                    .then(userCredential => {
+                        const user = userCredential.user;
+                        
+                        // Сохраняем состояние авторизации и показываем админ-панель
+                        localStorage.setItem('strintox_admin_auth', 'authenticated');
+                        showAdminPanel();
+                        loadNewsList();
+                    })
+                    .catch(error => {
+                        console.error("Ошибка аутентификации:", error);
+                        showLoginError('Неверный пароль');
+                    })
+                    .finally(() => {
+                        // Восстанавливаем кнопку
+                        loginButton.disabled = false;
+                        loginButton.innerHTML = originalButtonText;
+                    });
+            } else {
+                showLoginError('Неверный email администратора');
+                loginButton.disabled = false;
+                loginButton.innerHTML = originalButtonText;
+            }
+        }
+        
+        // Функция отображения ошибки входа
+        function showLoginError(message) {
+            const errorElement = document.getElementById('admin-login-error');
+            errorElement.textContent = message;
+            errorElement.classList.add('show');
+            
+            // Скрываем сообщение об ошибке через 3 секунды
+            setTimeout(() => {
+                errorElement.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Выход из админ-панели
+        function handleLogout() {
+            localStorage.removeItem('strintox_admin_auth');
+            showLoginForm();
+        }
+        
+        // Функция загрузки списка новостей
+        function loadNewsList() {
+            // Проверяем авторизацию
+            if (!isAuthenticated) {
+                showLoginForm();
+                return;
+            }
+            
+            const newsList = document.getElementById('news-list');
+            
+            if (!newsList) {
+                console.error("Элемент news-list не найден");
+                return;
+            }
+            
+            // Показываем загрузку
+            newsList.innerHTML = `
+                <div class="loading-indicator">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Загрузка списка новостей...</p>
+                </div>
+            `;
+            
+            // Запрашиваем новости из Firestore
+            db.collection('news')
+                .orderBy('createdAt', 'desc')
+                .get()
+                .then(snapshot => {
+                    if (snapshot.empty) {
+                        newsList.innerHTML = `
+                            <div class="no-news">
+                                <i class="fas fa-newspaper"></i>
+                                <p>Новости не найдены. Создайте первую новость!</p>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    // Создаем HTML для списка новостей
+                    let html = '';
+                    
+                    snapshot.forEach(doc => {
+                        const news = doc.data();
+                        const date = news.createdAt ? new Date(news.createdAt.seconds * 1000) : new Date();
+                        const formattedDate = date.toLocaleDateString('ru-RU', {
+                            day: 'numeric',
+                            month: 'long', 
+                            year: 'numeric'
+                        });
+                        
+                        html += `
+                            <div class="news-item" data-id="${doc.id}">
+                                <div class="news-item-title">${news.title || 'Без заголовка'}</div>
+                                <div class="news-item-date">${formattedDate}</div>
+                                <div class="news-item-actions">
+                                    <button class="news-action-btn btn-edit" onclick="editNews('${doc.id}')">
+                                        <i class="fas fa-edit"></i> Редактировать
+                                    </button>
+                                    <button class="news-action-btn btn-delete" onclick="confirmDelete('${doc.id}')">
+                                        <i class="fas fa-trash"></i> Удалить
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    // Вставляем HTML
+                    newsList.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error("Ошибка при загрузке новостей:", error);
+                    newsList.innerHTML = `
+                        <div class="error-message">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <p>Ошибка при загрузке новостей: ${error.message}</p>
+                            <button onclick="loadNewsList()" class="btn-primary">
+                                <i class="fas fa-sync"></i> Попробовать снова
+                            </button>
+                        </div>
+                    `;
+                });
+        }
+
+        // Функция отображения модального окна создания/редактирования новости
+        function showNewsEditor(id = null) {
+            // Проверяем авторизацию
+            if (!isAuthenticated) {
+                showLoginForm();
+                return;
+            }
+            
+            // Меняем заголовок в зависимости от режима
+            const editorTitle = document.getElementById('editor-title');
+            const publishButton = document.getElementById('publish-button');
+            const newsIdField = document.getElementById('news-id');
+            
+            if (id) {
+                editorTitle.innerHTML = '<i class="fas fa-edit"></i> Редактирование новости';
+                publishButton.innerHTML = '<i class="fas fa-save"></i> Сохранить изменения';
+                newsIdField.value = id;
+            } else {
+                editorTitle.innerHTML = '<i class="fas fa-newspaper"></i> Создание новости';
+                publishButton.innerHTML = '<i class="fas fa-paper-plane"></i> Опубликовать';
+                newsIdField.value = '';
+                
+                // Очищаем форму
+                document.getElementById('news-title').value = '';
+                document.getElementById('news-content').value = '';
+            }
+            
+            // Отображаем модальное окно
+            document.getElementById('news-editor-modal').classList.add('active');
+        }
+
+        // Функция редактирования новости
+        function editNews(id) {
+            // Проверяем авторизацию
+            if (!isAuthenticated) {
+                showLoginForm();
+                return;
+            }
+            
+            console.log("Редактирование новости с ID:", id);
+            currentEditingId = id;
+            isEditing = true;
+            
+            // Загружаем данные новости
+            db.collection('news').doc(id)
+                .get()
+                .then(doc => {
+                    if (!doc.exists) {
+                        alert('Новость не найдена.');
+                        return;
+                    }
+                    
+                    const news = doc.data();
+                    
+                    // Заполняем форму данными
+                    document.getElementById('news-title').value = news.title || '';
+                    document.getElementById('news-content').innerHTML = news.content || '';
+                    document.getElementById('news-id').value = id;  // Устанавливаем ID в скрытое поле
+                    
+                    // Отображаем модальное окно
+                    document.getElementById('news-editor-modal').classList.add('active');
+                    document.getElementById('editor-title').textContent = 'Редактирование новости';
+                })
+                .catch(error => {
+                    console.error("Ошибка при загрузке новости:", error);
+                    alert(`Ошибка при загрузке новости: ${error.message}`);
+                });
+        }
+
+        // Функция подтверждения удаления
+        function confirmDelete(id) {
+            // Проверяем авторизацию
+            if (!isAuthenticated) {
+                showLoginForm();
+                return;
+            }
+            
+            document.getElementById('delete-news-id').value = id;
+            document.getElementById('confirm-delete-modal').classList.add('active');
+        }
+
+        // Функция удаления новости
+        function deleteNews(id) {
+            // Проверяем авторизацию
+            if (!isAuthenticated) {
+                showLoginForm();
+                return;
+            }
+            
+            if (!id) return;
+            
+            db.collection('news').doc(id)
+                .delete()
+                .then(() => {
+                    document.getElementById('confirm-delete-modal').classList.remove('active');
+                    loadNewsList();
+                })
+                .catch(error => {
+                    console.error("Ошибка при удалении:", error);
+                    alert(`Ошибка при удалении: ${error.message}`);
+                });
+        }
+
+        // Функция публикации/обновления новости
+        function publishNews() {
+            // Проверяем авторизацию
+            if (!isAuthenticated) {
+                showLoginForm();
+                return;
+            }
+            
+            const title = document.getElementById('news-title').value.trim();
+            const content = document.getElementById('news-content').innerHTML.trim();
+            const newsId = document.getElementById('news-id').value;
+            
+            if (!title) {
+                alert('Пожалуйста, введите заголовок новости.');
+                return;
+            }
+            
+            // Создаем объект с данными новости
+            const newsData = {
+                title: title,
+                content: content,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            // Если это новая новость, добавляем дополнительные поля
+            if (!newsId) {
+                newsData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                // Используем реальное имя пользователя вместо "Администратор"
+                newsData.author = auth.currentUser.displayName || auth.currentUser.email.split('@')[0];
+                newsData.authorId = auth.currentUser.uid;
+            }
+            
+            // Сохраняем в базу данных
+            const savePromise = newsId 
+                ? db.collection('news').doc(newsId).update(newsData) // Обновление
+                : db.collection('news').add(newsData); // Создание
+            
+            savePromise
+                .then(() => {
+                    // Закрываем модальное окно
+                    document.getElementById('news-editor-modal').classList.remove('active');
+                    
+                    // Сообщаем об успешном сохранении
+                    alert(newsId ? 'Новость успешно обновлена.' : 'Новость успешно опубликована.');
+                    
+                    // Обновляем список новостей
+                    loadNewsList();
+                })
+                .catch(error => {
+                    console.error("Ошибка при сохранении:", error);
+                    alert(`Ошибка при сохранении: ${error.message}`);
+                });
+        }
+
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            // Проверяем авторизацию
+            checkAuthentication();
+            
+            // Обработчик для формы входа в админ-панель
+            const adminLoginForm = document.getElementById('admin-login-form');
+            if (adminLoginForm) {
+                adminLoginForm.addEventListener('submit', handleAdminLogin);
+            }
+            
+            // Обработчик для кнопки выхода
+            const logoutButton = document.getElementById('logout-button');
+            if (logoutButton) {
+                logoutButton.addEventListener('click', handleLogout);
+            }
+            
+            // Настраиваем переключение темы
+            const themeToggle = document.getElementById('theme-toggle');
+            if (themeToggle) {
+                // Загружаем сохраненную тему
+                const savedTheme = localStorage.getItem('theme') || 'light';
+                document.documentElement.setAttribute('data-theme', savedTheme);
+                themeToggle.checked = savedTheme === 'dark';
+                
+                // Обработчик переключения темы
+                themeToggle.addEventListener('change', function() {
+                    const newTheme = this.checked ? 'dark' : 'light';
+                    document.documentElement.setAttribute('data-theme', newTheme);
+                    localStorage.setItem('theme', newTheme);
+                });
+            }
+            
+            // Настраиваем модальные окна редактора
+            const editorModal = document.getElementById('news-editor-modal');
+            const closeEditor = document.getElementById('close-editor');
+            const cancelEditButton = document.getElementById('cancel-edit-button');
+            
+            if (closeEditor) {
+                closeEditor.addEventListener('click', function() {
+                    editorModal.classList.remove('active');
+                });
+            }
+            
+            if (cancelEditButton) {
+                cancelEditButton.addEventListener('click', function() {
+                    editorModal.classList.remove('active');
+                });
+            }
+            
+            // Обработчики для диалога подтверждения удаления
+            const confirmDeleteModal = document.getElementById('confirm-delete-modal');
+            const closeDeleteDialog = document.getElementById('close-delete-dialog');
+            const cancelDeleteButton = document.getElementById('cancel-delete-button');
+            const confirmDeleteButton = document.getElementById('confirm-delete-button');
+            
+            if (closeDeleteDialog) {
+                closeDeleteDialog.addEventListener('click', function() {
+                    confirmDeleteModal.classList.remove('active');
+                });
+            }
+            
+            if (cancelDeleteButton) {
+                cancelDeleteButton.addEventListener('click', function() {
+                    confirmDeleteModal.classList.remove('active');
+                });
+            }
+            
+            // Кнопка подтверждения удаления - ФИКС
+            if (confirmDeleteButton) {
+                confirmDeleteButton.addEventListener('click', function() {
+                    const newsId = document.getElementById('delete-news-id').value;
+                    if (newsId) {
+                        deleteNews(newsId);
+                    } else {
+                        console.error("ID новости для удаления не найден");
+                    }
+                });
+            }
+            
+            // Кнопка создания новости
+            const createNewsButton = document.getElementById('create-news-button');
+            if (createNewsButton) {
+                createNewsButton.addEventListener('click', function() {
+                    showNewsEditor();
+                });
+            }
+            
+            // Кнопка обновления списка
+            const refreshButton = document.getElementById('refresh-news-button');
+            if (refreshButton) {
+                refreshButton.addEventListener('click', loadNewsList);
+            }
+            
+            // Кнопка публикации/сохранения
+            const publishButton = document.getElementById('publish-button');
+            if (publishButton) {
+                publishButton.addEventListener('click', publishNews);
+            }
+            
+            // Функции для управления модальными окнами
+            setupModalControls();
+        });
+        
+        // Делаем функции доступными глобально
+        window.loadNewsList = loadNewsList;
+        window.editNews = editNews;
+        window.confirmDelete = confirmDelete;
+        
+        // Функция для применения форматирования к выделенному тексту
+        function applyFormatting(type) {
+            document.execCommand('styleWithCSS', false, true);
+            
+            switch (type) {
+                case 'bold':
+                    document.execCommand('bold', false, null);
+                    break;
+                case 'italic':
+                    document.execCommand('italic', false, null);
+                    break;
+                case 'underline':
+                    document.execCommand('underline', false, null);
+                    break;
+                case 'alignLeft':
+                    document.execCommand('justifyLeft', false, null);
+                    break;
+                case 'alignCenter':
+                    document.execCommand('justifyCenter', false, null);
+                    break;
+                case 'alignRight':
+                    document.execCommand('justifyRight', false, null);
+                    break;
+                case 'fontSize':
+                    const size = document.getElementById('fontSize').value;
+                    if (size) {
+                        document.execCommand('fontSize', false, size);
+                    }
+                    break;
+                case 'color':
+                    const color = document.getElementById('textColor').value;
+                    document.execCommand('foreColor', false, color);
+                    break;
+                case 'removeFormat':
+                    document.execCommand('removeFormat', false, null);
+                    break;
+            }
+            
+            // Возвращаем фокус в редактор
+            document.getElementById('news-content').focus();
+        }
+        
+        // Функция для открытия редактора новостей
+        function openNewsEditor(newsId = null) {
+            // Сбрасываем редактор
+            document.getElementById('news-title').value = '';
+            document.getElementById('news-content').innerHTML = '';
+            document.getElementById('fontSize').selectedIndex = 0;
+            document.getElementById('textColor').value = '#000000';
+            
+            // Настраиваем заголовок модального окна
+            const editorTitle = document.getElementById('editor-title');
+            if (newsId) {
+                editorTitle.textContent = 'Редактирование новости';
+                currentEditingId = newsId;
+                document.getElementById('news-id').value = newsId;
+                isEditing = true;
+                loadNewsForEditing(newsId);
+            } else {
+                editorTitle.textContent = 'Создание новости';
+                currentEditingId = null;
+                document.getElementById('news-id').value = '';
+                isEditing = false;
+            }
+            
+            // Открываем модальное окно
+            document.getElementById('news-editor-modal').classList.add('active');
+        }
+        
+        // Функция для загрузки данных новости для редактирования
+        function loadNewsForEditing(newsId) {
+            // Показываем индикатор загрузки
+            document.getElementById('news-content').innerHTML = '<div class="loading-indicator"><i class="fas fa-spinner fa-spin"></i> Загрузка содержимого...</div>';
+            
+            // Запрашиваем данные из Firestore
+            db.collection('news').doc(newsId).get()
+                .then(doc => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        document.getElementById('news-title').value = data.title || '';
+                        document.getElementById('news-content').innerHTML = data.content || '';
+                    } else {
+                        alert('Новость не найдена');
+                        closeModal('news-editor-modal');
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка при загрузке новости:', error);
+                    alert('Ошибка при загрузке данных: ' + error.message);
+                    closeModal('news-editor-modal');
+                });
+        }
+        
+        // Функция настройки элементов управления модальными окнами
+        function setupModalControls() {
+            // Кнопки для открытия модальных окон
+            document.querySelectorAll('[data-open-modal]').forEach(button => {
+                button.addEventListener('click', function() {
+                    const modalId = this.getAttribute('data-open-modal');
+                    document.getElementById(modalId).classList.add('active');
+                });
+            });
+            
+            // Кнопки для закрытия модальных окон
+            document.querySelectorAll('[data-modal]').forEach(button => {
+                button.addEventListener('click', function() {
+                    const modalId = this.getAttribute('data-modal');
+                    closeModal(modalId);
+                });
+            });
+            
+            // Закрытие модального окна при клике вне его содержимого
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        this.classList.remove('active');
+                    }
+                });
+            });
+        }
+        
+        // Функция закрытия модального окна
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+    </script>
+</body>
+</html> 

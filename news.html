@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Strintox News</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAAdu7bWt9F2GF1W9qEzfc2f_y6LCqMM14",
+            authDomain: "strintox-3a2b8.firebaseapp.com",
+            projectId: "strintox-3a2b8",
+            storageBucket: "strintox-3a2b8.appspot.com",
+            messagingSenderId: "12688530154",
+            appId: "1:12688530154:web:da86782e5c3261c6c35593",
+            measurementId: "G-WVB4V2T51Y"
+        };
+
+        // Initialize Firebase
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+                console.log("Firebase initialized successfully");
+            }
+        } catch (error) {
+            console.error("Failed to initialize Firebase:", error);
+            document.addEventListener('DOMContentLoaded', () => {
+                showError('Firebase initialization failed: ' + error.message);
+            });
+        }
+        
+        // Function to show errors
+        function showError(message) {
+            console.error(message);
+            const errorElement = document.createElement('div');
+            errorElement.className = 'empty-news-container';
+            errorElement.innerHTML = `
+                <i class="fas fa-exclamation-circle"></i>
+                <p>Ошибка: ${message}</p>
+                <button class="btn-primary" onclick="location.reload()">
+                    <i class="fas fa-sync"></i> Перезагрузить страницу
+                </button>
+            `;
+            
+            document.addEventListener('DOMContentLoaded', () => {
+                const container = document.getElementById('news-container');
+                if (container) {
+                    container.innerHTML = '';
+                    container.appendChild(errorElement);
+                }
+                
+                // Show debug panel
+                const debugPanel = document.getElementById('debug-panel');
+                if (debugPanel) {
+                    debugPanel.style.display = 'block';
+                }
+            });
+        }
+        
+        // При загрузке страницы немедленно проверяем и устанавливаем сохраненную тему
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            
+            // Также устанавливаем положение тумблера
+            if (savedTheme === 'dark') {
+                const themeToggle = document.getElementById('theme-toggle');
+                if (themeToggle) {
+                    themeToggle.checked = true;
+                }
+            }
+        })();
+        
+        // После загрузки DOM инициализируем проверку статуса админа
+        document.addEventListener('DOMContentLoaded', function() {
+            // Инициализируем Firebase Auth
+            const auth = firebase.auth();
+            
+            // Загружаем новости
+            loadNews();
+            
+            // Запрет копирования текста и контекстного меню на всей странице
+            document.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                return false;
+            });
+            
+            document.addEventListener('selectstart', function(e) {
+                e.preventDefault();
+                return false;
+            });
+            
+            document.addEventListener('keydown', function(e) {
+                // Блокируем Ctrl+C, Ctrl+X, Ctrl+V, Ctrl+A
+                if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'x' || e.key === 'a')) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+        });
+        
+        // Функция загрузки новостей
+        function loadNews() {
+            const newsContainer = document.getElementById('news-container');
+            if (!newsContainer) return;
+            
+            // Показываем индикатор загрузки
+            newsContainer.innerHTML = `
+                <div class="loading-indicator">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Загрузка новостей...</p>
+                </div>
+            `;
+            
+            // Загружаем новости из Firebase
+            firebase.firestore().collection('news')
+                .orderBy('createdAt', 'desc')
+                .get()
+                .then(snapshot => {
+                    if (snapshot.empty) {
+                        // Если новостей нет
+                        newsContainer.innerHTML = `
+                            <div class="empty-news-container">
+                                <i class="fas fa-newspaper"></i>
+                                <p>Новостей пока нет. Заходите позже!</p>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    // Создаем HTML для новостей
+                    let html = '<div class="news-grid">';
+                    
+                    snapshot.forEach(doc => {
+                        const news = doc.data();
+                        const newsId = doc.id;
+                        
+                        // Форматируем дату
+                        let dateStr = 'Без даты';
+                        if (news.createdAt) {
+                            const date = news.createdAt.toDate();
+                            dateStr = date.toLocaleDateString('ru-RU', {
+                                day: 'numeric',
+                                month: 'long',
+                                year: 'numeric'
+                            });
+                        }
+                        
+                        // Создаем превью содержимого (обрезаем HTML-теги)
+                        let preview = news.content || '';
+                        preview = preview.replace(/<[^>]*>/g, ''); // Удаляем HTML-теги
+                        if (preview.length > 150) {
+                            preview = preview.substring(0, 150) + '...';
+                        }
+                        
+                        // Добавляем карточку новости
+                        html += `
+                            <div class="news-card">
+                                <div class="news-header">
+                                    <h2 class="news-title">${news.title || 'Без заголовка'}</h2>
+                                </div>
+                                <div class="news-meta">
+                                    <div class="news-author">
+                                        <i class="fas fa-user"></i>
+                                        ${news.author || 'Администратор'}
+                                    </div>
+                                    <div class="news-date">
+                                        <i class="fas fa-calendar"></i>
+                                        ${dateStr}
+                                    </div>
+                                </div>
+                                <div class="news-preview">
+                                    <p>${preview}</p>
+                                </div>
+                                <div class="news-actions">
+                                    <a href="article.html?id=${newsId}" class="read-more-btn">
+                                        <i class="fas fa-book-open"></i> Читать полностью
+                                    </a>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    newsContainer.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Ошибка при загрузке новостей:', error);
+                    newsContainer.innerHTML = `
+                        <div class="empty-news-container">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <p>Ошибка загрузки новостей: ${error.message}</p>
+                            <button class="btn-primary" onclick="loadNews()">
+                                <i class="fas fa-sync"></i> Попробовать снова
+                            </button>
+                        </div>
+                    `;
+                });
+        }
+        
+        // Функция для отображения редактора новостей - исправленная версия
+        function showNewsEditor(newsId = null) {
+            // Проверяем, авторизован ли пользователь
+            const user = firebase.auth().currentUser;
+            if (!user) {
+                alert('Для создания новостей необходимо авторизоваться');
+                return;
+            }
+            
+            console.log("Открываем редактор новостей", newsId ? "для редактирования ID: " + newsId : "для создания новой записи");
+            
+            // Проверяем, существует ли уже модальное окно
+            let modal = document.getElementById('news-editor-modal');
+            if (modal) {
+                // Если модальное окно уже существует, просто активируем его
+                modal.classList.add('active');
+                
+                // Очищаем поля
+                document.getElementById('news-title').value = '';
+                document.getElementById('news-content').innerHTML = '';
+                
+                // Загружаем данные, если это редактирование
+                if (newsId) {
+                    loadNewsForEditing(newsId);
+                }
+                
+                return;
+            }
+            
+            // Создаем модальное окно редактора
+            const modalHTML = `
+                <div id="news-editor-modal" class="modal active">
+                    <div class="modal-content" style="max-width: 800px; width: 95%;">
+                        <div class="modal-header">
+                            <h2><i class="fas fa-newspaper"></i> ${newsId ? 'Редактирование' : 'Создание'} новости</h2>
+                            <button class="close-modal" onclick="closeNewsEditor()">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="news-title">Заголовок</label>
+                                <input type="text" id="news-title" placeholder="Введите заголовок новости" required>
+                                <input type="hidden" id="edit-news-id" value="${newsId || ''}">
+                            </div>
+                            
+                            <!-- Панель инструментов форматирования -->
+                            <div class="editor-toolbar">
+                                <button type="button" onclick="applyNewsFormatting('bold')" title="Жирный текст">
+                                    <i class="fas fa-bold"></i>
+                                </button>
+                                <button type="button" onclick="applyNewsFormatting('italic')" title="Курсив">
+                                    <i class="fas fa-italic"></i>
+                                </button>
+                                <button type="button" onclick="applyNewsFormatting('underline')" title="Подчеркнутый">
+                                    <i class="fas fa-underline"></i>
+                                </button>
+                                <div class="toolbar-divider"></div>
+                                <button type="button" onclick="applyNewsFormatting('alignLeft')" title="По левому краю">
+                                    <i class="fas fa-align-left"></i>
+                                </button>
+                                <button type="button" onclick="applyNewsFormatting('alignCenter')" title="По центру">
+                                    <i class="fas fa-align-center"></i>
+                                </button>
+                                <button type="button" onclick="applyNewsFormatting('alignRight')" title="По правому краю">
+                                    <i class="fas fa-align-right"></i>
+                                </button>
+                                <div class="toolbar-divider"></div>
+                                <select id="fontSize" onchange="applyNewsFormatting('fontSize')">
+                                    <option value="">Размер шрифта</option>
+                                    <option value="1">Очень маленький</option>
+                                    <option value="2">Маленький</option>
+                                    <option value="3">Обычный</option>
+                                    <option value="4">Средний</option>
+                                    <option value="5">Большой</option>
+                                    <option value="6">Очень большой</option>
+                                    <option value="7">Огромный</option>
+                                </select>
+                                <input type="color" id="textColor" onchange="applyNewsFormatting('color')" title="Цвет текста">
+                                <button type="button" onclick="applyNewsFormatting('removeFormat')" title="Удалить форматирование">
+                                    <i class="fas fa-eraser"></i>
+                                </button>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="news-content">Содержание</label>
+                                <div id="news-content" contenteditable="true" class="rich-text-editor"></div>
+                            </div>
+                            
+                            <div class="form-buttons">
+                                <button id="publish-button" class="btn-primary" onclick="publishNewsFromEditor()">
+                                    <i class="fas fa-paper-plane"></i> ${newsId ? 'Сохранить изменения' : 'Опубликовать'}
+                                </button>
+                                <button onclick="closeNewsEditor()" class="btn-secondary">
+                                    <i class="fas fa-times"></i> Отмена
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Добавляем редактор в DOM
+            const editorContainer = document.createElement('div');
+            editorContainer.id = 'news-editor-container';
+            editorContainer.innerHTML = modalHTML;
+            document.body.appendChild(editorContainer);
+            
+            // Если это редактирование существующей новости, загружаем её данные
+            if (newsId) {
+                loadNewsForEditing(newsId);
+            }
+            
+            // Делаем страницу непрокручиваемой при открытом модальном окне
+            document.body.style.overflow = 'hidden';
+            
+            console.log("Редактор новостей успешно создан");
+        }
+        
+        // Функция применения форматирования к выделенному тексту
+        function applyNewsFormatting(type) {
+            document.execCommand('styleWithCSS', false, true);
+            
+            switch (type) {
+                case 'bold':
+                    document.execCommand('bold', false, null);
+                    break;
+                case 'italic':
+                    document.execCommand('italic', false, null);
+                    break;
+                case 'underline':
+                    document.execCommand('underline', false, null);
+                    break;
+                case 'alignLeft':
+                    document.execCommand('justifyLeft', false, null);
+                    break;
+                case 'alignCenter':
+                    document.execCommand('justifyCenter', false, null);
+                    break;
+                case 'alignRight':
+                    document.execCommand('justifyRight', false, null);
+                    break;
+                case 'fontSize':
+                    const size = document.getElementById('fontSize').value;
+                    if (size) {
+                        document.execCommand('fontSize', false, size);
+                    }
+                    break;
+                case 'color':
+                    const color = document.getElementById('textColor').value;
+                    document.execCommand('foreColor', false, color);
+                    break;
+                case 'removeFormat':
+                    document.execCommand('removeFormat', false, null);
+                    break;
+            }
+            
+            // Возвращаем фокус в редактор
+            document.getElementById('news-content').focus();
+        }
+        
+        // Функция закрытия редактора новостей
+        function closeNewsEditor() {
+            const modal = document.getElementById('news-editor-modal');
+            if (modal) {
+                modal.parentNode.remove();
+            }
+            
+            // Восстанавливаем прокрутку страницы
+            document.body.style.overflow = '';
+        }
+        
+        // Функция загрузки новости для редактирования
+        function loadNewsForEditing(newsId) {
+            const titleInput = document.getElementById('news-title');
+            const contentEditor = document.getElementById('news-content');
+            
+            // Показываем индикатор загрузки
+            titleInput.disabled = true;
+            contentEditor.innerHTML = '<div class="loading-indicator"><i class="fas fa-spinner fa-spin"></i> Загрузка содержимого...</div>';
+            
+            // Загружаем данные новости
+            firebase.firestore().collection('news').doc(newsId).get()
+                .then(function(doc) {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        titleInput.value = data.title || '';
+                        contentEditor.innerHTML = data.content || '';
+                        titleInput.disabled = false;
+                    } else {
+                        alert('Новость не найдена');
+                        closeNewsEditor();
+                    }
+                })
+                .catch(function(error) {
+                    console.error('Ошибка при загрузке новости:', error);
+                    alert('Ошибка при загрузке данных новости: ' + error.message);
+                    closeNewsEditor();
+                });
+        }
+        
+        // Функция публикации новости из редактора
+        function publishNewsFromEditor() {
+            // Проверяем, авторизован ли пользователь
+            if (!firebase.auth().currentUser) {
+                alert('Для создания новостей необходимо авторизоваться');
+                return;
+            }
+            
+            const title = document.getElementById('news-title').value.trim();
+            const content = document.getElementById('news-content').innerHTML.trim();
+            
+            if (!title || !content) {
+                alert('Пожалуйста, заполните все поля');
+                return;
+            }
+            
+            // Показываем индикатор загрузки
+            const publishButton = document.getElementById('publish-button');
+            const originalText = publishButton.innerHTML;
+            publishButton.disabled = true;
+            publishButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Публикация...';
+            
+            // Подготавливаем данные для новости
+            const newsData = {
+                title: title,
+                content: content,
+                author: firebase.auth().currentUser.displayName || firebase.auth().currentUser.email.split('@')[0],
+                authorId: firebase.auth().currentUser.uid,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            // Добавляем новость в базу данных
+            firebase.firestore().collection('news').add(newsData)
+                .then(function() {
+                    console.log('Новость успешно создана');
+                    closeNewsEditor();
+                    loadNews(); // Обновляем список новостей
+                    
+                    // Показываем уведомление об успехе
+                    alert('Новость успешно опубликована!');
+                })
+                .catch(function(error) {
+                    console.error('Ошибка при создании новости:', error);
+                    alert('Ошибка при публикации новости: ' + error.message);
+                    
+                    // Восстанавливаем кнопку
+                    publishButton.disabled = false;
+                    publishButton.innerHTML = originalText;
+                });
+        }
+        
+        // Функция переключения темы
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            const themeToggle = document.getElementById('theme-toggle');
+            if (themeToggle) {
+                themeToggle.checked = newTheme === 'dark';
+            }
+            
+            return false;
+        }
+        
+        // При загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            // Применяем сохраненную тему
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            
+            const themeToggle = document.getElementById('theme-toggle');
+            if (themeToggle) {
+                themeToggle.checked = savedTheme === 'dark';
+            }
+        });
+    </script>
+    
+    <style>
+        /* Общие стили для предотвращения копирования текста на всем сайте */
+        body {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+        
+        /* Unified header design for all Strintox sections */
+        header {
+            background-color: var(--card-bg);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            margin: 15px 20px;
+            padding: 15px 20px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            gap: 10px;
+        }
+        
+        .logo i {
+            color: var(--primary-color);
+            font-size: 1.5rem;
+        }
+        
+        .logo h1 {
+            color: var(--text-color);
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+            font-family: 'Montserrat', sans-serif;
+        }
+        
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .admin-link-button, .weather-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background-color: var(--button-bg);
+            color: var(--button-text);
+            padding: 8px 14px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            box-shadow: var(--button-shadow);
+        }
+        
+        .admin-link-button:hover, .weather-link:hover {
+            background-color: var(--button-hover-bg);
+            transform: translateY(-2px);
+        }
+        
+        .profile-button {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--button-bg);
+            border: none;
+            color: var(--button-text);
+            font-size: 1.6rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            box-shadow: var(--button-shadow);
+        }
+        
+        .profile-button:hover {
+            background-color: var(--button-hover-bg);
+            transform: translateY(-2px);
+        }
+        
+        /* Theme switch styling */
+        .theme-switch-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .theme-icon {
+            color: var(--text-color);
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
+        
+        .theme-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+        
+        .theme-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--slider-bg);
+            transition: .4s;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+        }
+        
+        input:checked + .slider {
+            background-color: var(--primary-color);
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        
+        .slider.round {
+            border-radius: 24px;
+        }
+        
+        .slider.round:before {
+            border-radius: 50%;
+        }
+        
+        /* Weather link styling */
+        .weather-link {
+            color: var(--button-text);
+        }
+        
+        .weather-link i {
+            color: #ffac33;
+            font-size: 1.1rem;
+        }
+        
+        /* Улучшенные стили для страницы новостей */
+        .page-header {
+            text-align: center;
+            padding: 15px 10px;
+            margin-bottom: 20px;
+            background-color: var(--card-bg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--card-shadow);
+        }
+        
+        .page-title {
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+        
+        .news-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 15px;
+        }
+        
+        .news-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .news-card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            border: 1px solid var(--border-color);
+        }
+        
+        .news-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .news-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .news-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-color);
+            margin: 0;
+            line-height: 1.4;
+        }
+        
+        .news-meta {
+            display: flex;
+            justify-content: flex-start;
+            padding: 12px 16px;
+            gap: 15px;
+            background-color: var(--light-bg);
+            color: var(--secondary-text-color);
+            font-size: 0.9rem;
+        }
+        
+        .news-author, .news-date {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .news-meta i {
+            color: var(--primary-color);
+        }
+        
+        .news-preview {
+            padding: 16px;
+            flex-grow: 1;
+        }
+        
+        .news-preview p {
+            margin: 0;
+            color: var(--text-color);
+            line-height: 1.6;
+            font-size: 1rem;
+        }
+        
+        .news-actions {
+            padding: 16px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: center;
+        }
+        
+        .read-more-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: none;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            width: 100%;
+            max-width: 250px;
+        }
+        
+        .read-more-btn:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-2px);
+        }
+        
+        /* Сообщение об отсутствии новостей */
+        .empty-news-container {
+            text-align: center;
+            padding: 40px 20px;
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            margin: 20px auto;
+            max-width: 700px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .empty-news-container i {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            opacity: 0.8;
+        }
+        
+        .empty-news-container p {
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            color: var(--secondary-text-color);
+        }
+        
+        .empty-news-container .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 25px;
+            font-size: 1.05rem;
+            font-weight: 500;
+            border-radius: 8px;
+        }
+        
+        /* Адаптивный дизайн для мобильных устройств */
+        @media (max-width: 768px) {
+            .header-top {
+                flex-direction: column;
+                padding: 15px 10px;
+                gap: 15px;
+            }
+            
+            .header-controls {
+                width: 100%;
+                justify-content: center;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            
+            .theme-switch-wrapper {
+                margin-left: 0;
+            }
+            
+            .logo h1 {
+                font-size: 1.3rem;
+            }
+            
+            .admin-link-button, .weather-link {
+                padding: 6px 10px;
+                font-size: 0.85rem;
+            }
+            
+            .profile-button {
+                width: 36px;
+                height: 36px;
+                font-size: 1.3rem;
+            }
+            
+            .news-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+            
+            .news-card {
+                max-width: 100%;
+            }
+            
+            .news-meta {
+                flex-direction: column;
+                gap: 8px;
+                padding: 10px 14px;
+            }
+            
+            .news-title {
+                font-size: 1.2rem;
+            }
+            
+            .read-more-btn {
+                width: 100%;
+                padding: 14px 20px;
+                font-size: 1.05rem;
+            }
+        }
+        
+        /* Дополнительные стили для очень маленьких экранов */
+        @media (max-width: 480px) {
+            .container {
+                padding: 0;
+            }
+            
+            .news-container {
+                padding: 0 10px;
+            }
+            
+            .header-controls {
+                flex-wrap: wrap;
+                gap: 10px;
+                justify-content: center;
+            }
+            
+            .admin-link-button, .profile-button {
+                margin: 0 5px;
+            }
+            
+            .news-header {
+                padding: 14px;
+            }
+            
+            .news-title {
+                font-size: 1.1rem;
+            }
+            
+            .news-preview {
+                padding: 14px;
+            }
+            
+            .news-preview p {
+                font-size: 0.95rem;
+            }
+            
+            .empty-news-container {
+                padding: 30px 15px;
+            }
+            
+            .empty-news-container i {
+                font-size: 2.5rem;
+            }
+            
+            .empty-news-container p {
+                font-size: 1rem;
+            }
+            
+            .header-create-news-btn {
+                width: 100%;
+                justify-content: center;
+                font-size: 1rem;
+                padding: 12px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-top">
+                <a href="news.html" class="logo">
+                    <i class="fas fa-newspaper"></i>
+                    <h1>Strintox News</h1>
+                </a>
+                <div class="header-controls">
+                    <a href="index.html" class="weather-link">
+                        <i class="fas fa-cloud-sun"></i> Strintox Weather
+                    </a>
+                    <div class="theme-switch-wrapper">
+                        <div class="theme-icon">
+                            <i class="fas fa-sun"></i>
+                        </div>
+                        <label class="theme-switch">
+                            <input type="checkbox" id="theme-toggle" onclick="toggleTheme()">
+                            <span class="slider round"></span>
+                        </label>
+                        <div class="theme-icon">
+                            <i class="fas fa-moon"></i>
+                        </div>
+                    </div>
+                    <a href="admin.html" class="admin-link-button">
+                        <i class="fas fa-lock"></i> Админ-панель
+                    </a>
+                    <button id="profile-button" class="profile-button">
+                        <i class="fas fa-user-circle"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <!-- Основной контейнер для новостей -->
+            <div id="news-container" class="news-container simple-news-container">
+                <div class="loading-indicator">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Загрузка новостей...</p>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; 2025 • Strintox Weather</p>
+        </footer>
+    </div>
+
+    <!-- Adding profile modal HTML from index.html -->
+    <!-- Модальное окно авторизации -->
+    <div id="auth-modal" class="modal">
+        <div class="modal-content modern-auth-modal">
+            <div class="modal-header">
+                <h2>Вход в аккаунт</h2>
+                <button class="close-modal"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="login">Вход</button>
+                <button class="auth-tab" data-tab="register">Регистрация</button>
+            </div>
+            <div class="modal-body">
+                <!-- Форма входа -->
+                <form id="login-form" class="auth-form active">
+                    <div class="form-group">
+                        <label for="login-email">Электронная почта</label>
+                        <input type="email" id="login-email" placeholder="Введите email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Пароль</label>
+                        <input type="password" id="login-password" placeholder="Введите пароль" required>
+                    </div>
+                    <div class="form-group text-center">
+                        <button type="button" id="login-button" class="btn-primary">
+                            <i class="fas fa-sign-in-alt"></i> Войти
+                        </button>
+                    </div>
+                </form>
+                
+                <!-- Форма регистрации -->
+                <form id="register-form" class="auth-form">
+                    <div class="form-group">
+                        <label for="register-username">Имя пользователя</label>
+                        <input type="text" id="register-username" placeholder="Придумайте имя пользователя" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-email">Электронная почта</label>
+                        <input type="email" id="register-email" placeholder="Введите email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password">Пароль</label>
+                        <input type="password" id="register-password" placeholder="Минимум 6 символов" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-confirm-password">Подтверждение пароля</label>
+                        <input type="password" id="register-confirm-password" placeholder="Повторите пароль" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-bio">О себе (необязательно)</label>
+                        <textarea id="register-bio" placeholder="Расскажите что-нибудь о себе"></textarea>
+                    </div>
+                    <div class="form-group text-center">
+                        <button type="button" id="register-button" class="btn-primary">
+                            <i class="fas fa-user-plus"></i> Зарегистрироваться
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно профиля -->
+    <div id="profile-modal" class="modal">
+        <div class="profile-modal-content">
+            <button class="close-modal"><i class="fas fa-times"></i></button>
+            
+            <div class="profile-tabs-container">
+                <div class="profile-tabs">
+                    <button class="profile-tab active" data-tab="profile">
+                        <i class="fas fa-user"></i> <span>Профиль</span>
+                    </button>
+                    <button class="profile-tab" data-tab="favorites">
+                        <i class="fas fa-star"></i> <span>Избранное</span>
+                    </button>
+                    <button class="profile-tab" data-tab="settings">
+                        <i class="fas fa-cog"></i> <span>Настройки</span>
+                    </button>
+                </div>
+                
+                <!-- Содержимое вкладки Профиль -->
+                <div id="profile-content" class="profile-tab-content active">
+                    <div class="tab-description">
+                        <h3><i class="fas fa-user-circle"></i> Ваш профиль</h3>
+                        <p>Просмотр и редактирование информации о вашем аккаунте</p>
+                    </div>
+                    
+                    <div class="profile-container">
+                        <h2 id="profile-username">Пользователь</h2>
+                        <p id="profile-email">user@example.com</p>
+                        
+                        <div class="profile-bio">
+                            <h4><i class="fas fa-info-circle"></i> О себе</h4>
+                            <p id="profile-bio-text">Информация о пользователе не указана.</p>
+                        </div>
+                        
+                        <div class="profile-buttons">
+                            <button id="edit-profile-button" class="btn-primary">
+                                <i class="fas fa-edit"></i> Редактировать профиль
+                            </button>
+                            <button id="logout-button" class="btn-secondary">
+                                <i class="fas fa-sign-out-alt"></i> Выйти
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <form class="edit-profile-form hidden">
+                        <h2><i class="fas fa-user-edit"></i> Редактировать профиль</h2>
+                        
+                        <div class="form-group">
+                            <label for="edit-username">Никнейм</label>
+                            <input type="text" id="edit-username" placeholder="Ваш никнейм" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="edit-bio">О себе</label>
+                            <textarea id="edit-bio" placeholder="Расскажите о себе"></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <button type="button" id="save-profile-button" class="btn-primary">
+                                <i class="fas fa-save"></i> Сохранить
+                            </button>
+                            <button type="button" id="cancel-edit-button" class="btn-secondary">
+                                <i class="fas fa-times"></i> Отмена
+                            </button>
+                        </div>
+                        
+                        <div class="danger-zone">
+                            <h4><i class="fas fa-exclamation-triangle"></i> Опасная зона</h4>
+                            <p>При удалении аккаунта все ваши данные будут безвозвратно удалены.</p>
+                            <button type="button" id="delete-account-button" class="danger-button">
+                                <i class="fas fa-trash-alt"></i> Удалить аккаунт
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Содержимое вкладки Избранное -->
+                <div id="favorites-content" class="profile-tab-content">
+                    <div class="tab-description">
+                        <h3><i class="fas fa-star"></i> Избранные города</h3>
+                        <p>Здесь вы можете просмотреть и управлять списком избранных городов</p>
+                    </div>
+                    
+                    <div class="favorites-container">
+                        <div id="favorite-cities-list" class="city-list">
+                            <!-- Список будет заполнен динамически -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Содержимое вкладки Настройки -->
+                <div id="settings-content" class="profile-tab-content">
+                    <div class="tab-description">
+                        <h3><i class="fas fa-cog"></i> Настройки</h3>
+                        <p>Настройка единиц измерения и домашнего города</p>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <h3><i class="fas fa-ruler"></i> Единицы измерения</h3>
+                        <select id="units-selector" class="settings-select">
+                            <option value="metric">Метрическая система (°C, м/с)</option>
+                            <option value="imperial">Имперская система (°F, миль/ч)</option>
+                        </select>
+                        <p class="settings-hint">Выберите систему единиц измерения для отображения погоды</p>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <h3><i class="fas fa-home"></i> Домашний город</h3>
+                        <input type="text" id="home-location" class="settings-input" placeholder="Введите название города">
+                        <p class="settings-hint">Этот город будет загружаться по умолчанию при входе в приложение</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Простые функции для работы с темой -->
+    <script>
+        // Функция переключения темы
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            const themeToggle = document.getElementById('theme-toggle');
+            if (themeToggle) {
+                themeToggle.checked = newTheme === 'dark';
+            }
+            
+            return false;
+        }
+        
+        // При загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            // Применяем сохраненную тему
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            
+            const themeToggle = document.getElementById('theme-toggle');
+            if (themeToggle) {
+                themeToggle.checked = savedTheme === 'dark';
+            }
+        });
+    </script>
+
+    <script src="firebase-init.js"></script>
+    <script src="auth.js"></script>
+    <script src="news.js"></script>
+</body>
+</html> 
