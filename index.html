@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strintox Weather</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-top">
+                <div class="logo">
+                    <i class="fas fa-cloud-sun"></i>
+                    <h1>Strintox Weather</h1>
+                </div>
+                <div class="header-controls">
+                    <div class="theme-switch-wrapper">
+                        <span class="theme-icon"><i class="fas fa-sun"></i></span>
+                        <label class="theme-switch">
+                            <input type="checkbox" id="theme-toggle">
+                            <span class="slider round"></span>
+                        </label>
+                        <span class="theme-icon"><i class="fas fa-moon"></i></span>
+                    </div>
+                    <div class="user-profile-wrapper">
+                        <button id="profile-button" class="profile-button">
+                            <i class="fas fa-user-circle"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="search-container">
+                <input type="text" id="search-input" placeholder="Поиск города...">
+                <button id="search-button"><i class="fas fa-search"></i></button>
+            </div>
+        </header>
+
+        <main>
+            <div class="main-flex-container">
+                <div class="main-left">
+                    <section class="current-weather">
+                        <div class="weather-card">
+                            <div class="location">
+                                <h2 id="location">Сухум, Абхазия</h2>
+                                <p id="date-time">Загрузка...</p>
+                            </div>
+                            <div class="weather-info">
+                                <div class="temperature">
+                                    <h3 id="temperature">-- °C</h3>
+                                    <p id="feels-like">Ощущается как: -- °C</p>
+                                </div>
+                                <div class="weather-icon">
+                                    <img id="weather-icon" src="" alt="Иконка погоды">
+                                    <p id="weather-description">--</p>
+                                </div>
+                            </div>
+                            
+                            <div class="weather-details">
+                                <div class="detail">
+                                    <i class="fas fa-wind"></i>
+                                    <p>Ветер: <span id="wind">-- м/с</span></p>
+                                </div>
+                                <div class="detail">
+                                    <i class="fas fa-tint"></i>
+                                    <p>Влажность: <span id="humidity">--%</span></p>
+                                </div>
+                                <div class="detail">
+                                    <i class="fas fa-compress-arrows-alt"></i>
+                                    <p>Давление: <span id="pressure">-- гПа</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <!-- Расширенная информация о погоде -->
+                    <section class="extended-weather">
+                        <div class="weather-card">
+                            <h2 class="section-title">Подробная информация</h2>
+                            <div class="extended-weather-grid">
+                                <div class="extended-detail">
+                                    <i class="fas fa-sun"></i>
+                                    <div>
+                                        <h4>Восход</h4>
+                                        <p id="sunrise">--:--</p>
+                                    </div>
+                                </div>
+                                <div class="extended-detail">
+                                    <i class="fas fa-moon"></i>
+                                    <div>
+                                        <h4>Закат</h4>
+                                        <p id="sunset">--:--</p>
+                                    </div>
+                                </div>
+                                <div class="extended-detail">
+                                    <i class="fas fa-eye"></i>
+                                    <div>
+                                        <h4>Видимость</h4>
+                                        <p id="visibility">-- км</p>
+                                    </div>
+                                </div>
+                                <div class="extended-detail">
+                                    <i class="fas fa-cloud"></i>
+                                    <div>
+                                        <h4>Облачность</h4>
+                                        <p id="clouds">--%</p>
+                                    </div>
+                                </div>
+                                <div class="extended-detail">
+                                    <i class="fas fa-location-arrow"></i>
+                                    <div>
+                                        <h4>Направление ветра</h4>
+                                        <p id="wind-direction">--</p>
+                                    </div>
+                                </div>
+                                <div class="extended-detail">
+                                    <i class="fas fa-tachometer-alt"></i>
+                                    <div>
+                                        <h4>Порывы ветра</h4>
+                                        <p id="wind-gust">-- м/с</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <!-- Информация о море (только для прибрежных городов) -->
+                    <section id="sea-info-section" class="sea-info hidden">
+                        <div class="weather-card">
+                            <h2 class="section-title">Информация о море</h2>
+                            <div class="sea-info-container">
+                                <div class="sea-detail">
+                                    <i class="fas fa-water"></i>
+                                    <div>
+                                        <h4>Температура воды</h4>
+                                        <p id="sea-temp">-- °C</p>
+                                    </div>
+                                </div>
+                                <div class="sea-detail">
+                                    <i class="fas fa-water"></i>
+                                    <div>
+                                        <h4>Высота волн</h4>
+                                        <p id="wave-height">-- м</p>
+                                    </div>
+                                </div>
+                                <div class="sea-detail">
+                                    <i class="fas fa-arrows-alt"></i>
+                                    <div>
+                                        <h4>Направление волн</h4>
+                                        <p id="wave-direction">--</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="sea-conditions">
+                                <h4>Состояние моря:</h4>
+                                <p id="sea-conditions">--</p>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+                
+                <div class="main-right">
+                    <section class="map-section">
+                        <h2>Карта погоды</h2>
+                        <div id="weather-map"></div>
+                    </section>
+                </div>
+            </div>
+            
+            <section class="forecast">
+                <h2>Прогноз на 10 дней</h2>
+                <div class="forecast-container" id="forecast-container">
+                    <!-- Forecast items will be added here dynamically -->
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2025 • Strintox Weather</p>
+        </footer>
+    </div>
+
+    <!-- Модальное окно авторизации -->
+    <div id="auth-modal" class="modal">
+        <div class="modal-content modern-auth-modal">
+            <div class="modal-header">
+                <h2>Вход в аккаунт</h2>
+                <button class="close-modal"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="login">Вход</button>
+                <button class="auth-tab" data-tab="register">Регистрация</button>
+            </div>
+            <div class="modal-body">
+                <!-- Форма входа -->
+                <form id="login-form" class="auth-form active">
+                    <div class="form-group">
+                        <label for="login-email">Электронная почта</label>
+                        <input type="email" id="login-email" placeholder="Введите email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Пароль</label>
+                        <input type="password" id="login-password" placeholder="Введите пароль" required>
+                    </div>
+                    <div class="form-group text-center">
+                        <button type="button" id="login-button" class="btn-primary">
+                            <i class="fas fa-sign-in-alt"></i> Войти
+                        </button>
+                    </div>
+                </form>
+                
+                <!-- Форма регистрации -->
+                <form id="register-form" class="auth-form">
+                    <div class="form-group">
+                        <label for="register-username">Имя пользователя</label>
+                        <input type="text" id="register-username" placeholder="Придумайте имя пользователя" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-email">Электронная почта</label>
+                        <input type="email" id="register-email" placeholder="Введите email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password">Пароль</label>
+                        <input type="password" id="register-password" placeholder="Минимум 6 символов" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-confirm-password">Подтверждение пароля</label>
+                        <input type="password" id="register-confirm-password" placeholder="Повторите пароль" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-bio">О себе (необязательно)</label>
+                        <textarea id="register-bio" placeholder="Расскажите что-нибудь о себе"></textarea>
+                    </div>
+                    <div class="form-group text-center">
+                        <button type="button" id="register-button" class="btn-primary">
+                            <i class="fas fa-user-plus"></i> Зарегистрироваться
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно профиля -->
+    <div id="profile-modal" class="modal">
+        <div class="profile-modal-content">
+            <button class="close-modal"><i class="fas fa-times"></i></button>
+            
+            <div class="profile-tabs-container">
+                <div class="profile-tabs">
+                    <button class="profile-tab active" data-tab="profile">
+                        <i class="fas fa-user"></i> <span>Профиль</span>
+                    </button>
+                    <button class="profile-tab" data-tab="favorites">
+                        <i class="fas fa-star"></i> <span>Избранное</span>
+                    </button>
+                    <button class="profile-tab" data-tab="history">
+                        <i class="fas fa-history"></i> <span>История</span>
+                    </button>
+                    <button class="profile-tab" data-tab="settings">
+                        <i class="fas fa-cog"></i> <span>Настройки</span>
+                    </button>
+                </div>
+                
+                <!-- Содержимое вкладки Профиль -->
+                <div id="profile-content" class="profile-tab-content active">
+                    <div class="tab-description">
+                        <h3><i class="fas fa-user-circle"></i> Ваш профиль</h3>
+                        <p>Просмотр и редактирование информации о вашем аккаунте</p>
+                    </div>
+                    
+                    <div class="profile-container">
+                        <h2 id="profile-username">Пользователь</h2>
+                        <p id="profile-email">user@example.com</p>
+                        
+                        <div class="profile-bio">
+                            <h4><i class="fas fa-info-circle"></i> О себе</h4>
+                            <p id="profile-bio-text">Информация о пользователе не указана.</p>
+                        </div>
+                        
+                        <div class="profile-buttons">
+                            <button id="edit-profile-button" class="btn-primary">
+                                <i class="fas fa-edit"></i> Редактировать профиль
+                            </button>
+                            <button id="logout-button" class="btn-secondary">
+                                <i class="fas fa-sign-out-alt"></i> Выйти
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <form class="edit-profile-form hidden">
+                        <h2><i class="fas fa-user-edit"></i> Редактировать профиль</h2>
+                        
+                        <div class="form-group">
+                            <label for="edit-username">Никнейм</label>
+                            <input type="text" id="edit-username" placeholder="Ваш никнейм" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="edit-bio">О себе</label>
+                            <textarea id="edit-bio" placeholder="Расскажите о себе"></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <button type="button" id="save-profile-button" class="btn-primary">
+                                <i class="fas fa-save"></i> Сохранить
+                            </button>
+                            <button type="button" id="cancel-edit-button" class="btn-secondary">
+                                <i class="fas fa-times"></i> Отмена
+                            </button>
+                        </div>
+                        
+                        <div class="danger-zone">
+                            <h4><i class="fas fa-exclamation-triangle"></i> Опасная зона</h4>
+                            <p>При удалении аккаунта все ваши данные будут безвозвратно удалены.</p>
+                            <button type="button" id="delete-account-button" class="danger-button">
+                                <i class="fas fa-trash-alt"></i> Удалить аккаунт
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Содержимое вкладки Избранное -->
+                <div id="favorites-content" class="profile-tab-content">
+                    <div class="tab-description">
+                        <h3><i class="fas fa-star"></i> Избранные города</h3>
+                        <p>Здесь вы можете просмотреть и управлять списком избранных городов</p>
+                    </div>
+                    
+                    <div class="favorites-container">
+                        <div id="favorite-cities-list" class="city-list">
+                            <!-- Список будет заполнен динамически -->
+                        </div>
+                        
+                        <div class="add-favorite-container">
+                            <button id="add-favorite-city" class="action-button">
+                                <i class="fas fa-plus"></i> Добавить текущий город в избранное
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Содержимое вкладки История -->
+                <div id="history-content" class="profile-tab-content">
+                    <div class="tab-description">
+                        <h3><i class="fas fa-history"></i> История поиска</h3>
+                        <p>Просмотр и управление историей поиска погоды</p>
+                    </div>
+                    
+                    <div class="history-container">
+                        <div id="search-history-list" class="history-list">
+                            <!-- Список будет заполнен динамически -->
+                        </div>
+                        
+                        <div class="history-actions">
+                            <button id="clear-history-button" class="action-button">
+                                <i class="fas fa-trash"></i> Очистить историю
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Содержимое вкладки Настройки -->
+                <div id="settings-content" class="profile-tab-content">
+                    <div class="tab-description">
+                        <h3><i class="fas fa-cog"></i> Настройки</h3>
+                        <p>Настройка единиц измерения и домашнего города</p>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <h3><i class="fas fa-ruler"></i> Единицы измерения</h3>
+                        <select id="units-selector" class="settings-select">
+                            <option value="metric">Метрическая система (°C, м/с)</option>
+                            <option value="imperial">Имперская система (°F, миль/ч)</option>
+                        </select>
+                        <p class="settings-hint">Выберите систему единиц измерения для отображения погоды</p>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <h3><i class="fas fa-home"></i> Домашний город</h3>
+                        <input type="text" id="home-location" class="settings-input" placeholder="Введите название города">
+                        <p class="settings-hint">Этот город будет загружаться по умолчанию при входе в приложение</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="firebase-init.js"></script>
+    <script src="auth.js"></script>
+    <script src="script.js"></script>
+</body>
+</html> 
