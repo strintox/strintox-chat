@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Профиль пользователя - Новостной портал">
+    <meta name="theme-color" content="#4361ee">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Мой профиль | Новостной портал</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <!-- Стили для простых полей ввода -->
+    <style>
+        textarea.simple-editor {
+            width: 100%;
+            min-height: 250px;
+            padding: 15px;
+            font-family: 'Montserrat', Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        
+        textarea.simple-editor:focus {
+            outline: none;
+            border-color: #4361ee;
+            box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
+        }
+        
+        /* Разрешаем выделение в полях ввода */
+        input, textarea {
+            user-select: text !important;
+            -webkit-user-select: text !important;
+            -moz-user-select: text !important;
+            -ms-user-select: text !important;
+        }
+        
+        /* Стили для кнопки удаления комментария */
+        .delete-comment-btn {
+            background: none;
+            border: none;
+            color: #e74c3c;
+            cursor: pointer;
+            margin-left: 10px;
+            padding: 0;
+            opacity: 0.7;
+            transition: opacity 0.2s ease;
+        }
+        
+        .delete-comment-btn:hover {
+            opacity: 1;
+        }
+        
+        .comment-date {
+            display: flex;
+            align-items: center;
+        }
+        
+        .user-comment-item {
+            position: relative;
+            transition: opacity 0.3s ease;
+        }
+    </style>
+    <!-- Отключение сохранения страницы -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+</head>
+<body onselectstart="return false;">
+    <header>
+        <div class="container">
+            <a href="index.html" class="logo">
+                <i class="fas fa-newspaper"></i>
+                <span>Новостной портал</span>
+            </a>
+            <nav>
+                <ul>
+                    <li><a href="index.html"><i class="fas fa-home"></i> Главная</a></li>
+                    <li><a href="#" id="loginBtn"><i class="fas fa-sign-in-alt"></i> Войти</a></li>
+                    <li><a href="#" id="registerBtn"><i class="fas fa-user-plus"></i> Регистрация</a></li>
+                    <li><a href="profile.html" id="profileBtn" class="hidden active"><i class="fas fa-user"></i> Мой профиль</a></li>
+                    <li><a href="#" id="logoutBtn" class="hidden"><i class="fas fa-sign-out-alt"></i> Выйти</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="profile-container">
+            <div id="profileNotLoggedIn" class="login-required">
+                <i class="fas fa-lock"></i>
+                <h2>Требуется авторизация</h2>
+                <p>Для просмотра профиля необходимо войти в аккаунт</p>
+                <button id="profileLoginBtn" class="btn"><i class="fas fa-sign-in-alt"></i> Войти</button>
+            </div>
+            
+            <div id="profileData" class="hidden">
+                <div class="profile-header">
+                    <div class="profile-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="profile-info">
+                        <h1 id="profileName">Имя пользователя</h1>
+                        <p id="profileEmail">email@example.com</p>
+                        <div class="profile-meta">
+                            <span id="profileDateJoined"><i class="far fa-calendar-alt"></i> Дата регистрации</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="profile-tabs">
+                    <div class="tabs-nav">
+                        <button class="tab-btn active" data-tab="profile-info"><i class="fas fa-user"></i> Информация</button>
+                        <button class="tab-btn" data-tab="profile-comments"><i class="fas fa-comments"></i> Мои комментарии</button>
+                    </div>
+                    
+                    <div class="tab-content active" id="tab-profile-info">
+                        <div class="section-title">
+                            <h3>Информация профиля</h3>
+                        </div>
+
+                        <div class="profile-form">
+                            <div class="form-group">
+                                <label for="updateName">Имя:</label>
+                                <input type="text" id="updateName" required>
+                            </div>
+                            <button id="updateProfileBtn" class="btn">Обновить профиль</button>
+                        </div>
+                        
+                        <div id="adminActions" class="admin-actions hidden">
+                            <div class="section-title">
+                                <h3>Панель администратора</h3>
+                            </div>
+                            <p>У вас есть права администратора на этом портале.</p>
+                            <button id="goToAdminPanelBtn" class="btn admin-btn">
+                                <i class="fas fa-user-shield"></i> Перейти в панель администратора
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-content" id="tab-profile-comments">
+                        <div class="section-title">
+                            <h3>Мои комментарии</h3>
+                        </div>
+                        <div id="userCommentsList" class="user-comments-list">
+                            <!-- Комментарии пользователя будут добавлены здесь -->
+                            <div class="loading-comments">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <span>Загрузка комментариев...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p class="copyright">&copy; 2025 Все права защищены.</p>
+        </div>
+    </footer>
+
+    <!-- Модальное окно для авторизации -->
+    <div id="authModal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close"><i class="fas fa-times"></i></span>
+            <div id="loginForm">
+                <h2><i class="fas fa-sign-in-alt"></i> Вход в аккаунт</h2>
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="login-email">Email:</label>
+                        <input type="email" id="login-email" required autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Пароль:</label>
+                        <input type="password" id="login-password" required autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="btn">Войти</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для регистрации -->
+    <div id="registerModal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close"><i class="fas fa-times"></i></span>
+            <div id="registerForm">
+                <h2><i class="fas fa-user-plus"></i> Регистрация</h2>
+                <form id="register-form">
+                    <div class="form-group">
+                        <label for="register-name">Имя:</label>
+                        <input type="text" id="register-name" required autocomplete="name">
+                    </div>
+                    <div class="form-group">
+                        <label for="register-email">Email:</label>
+                        <input type="email" id="register-email" required autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password">Пароль:</label>
+                        <input type="password" id="register-password" required autocomplete="new-password">
+                    </div>
+                    <button type="submit" class="btn">Зарегистрироваться</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Админ панель (скрыта по умолчанию) -->
+    <div id="adminPanel" class="admin-panel hidden">
+        <div class="admin-header">
+            <h2><i class="fas fa-user-shield"></i> Панель администратора</h2>
+            <span class="close-admin"><i class="fas fa-times"></i></span>
+        </div>
+        <div class="admin-content">
+            <div id="adminLoginForm">
+                <h3>Вход для администратора</h3>
+                <form id="admin-login-form">
+                    <div class="form-group">
+                        <label for="admin-email">Email:</label>
+                        <input type="email" id="admin-email" required autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="admin-password">Пароль:</label>
+                        <input type="password" id="admin-password" required autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="btn">Войти</button>
+                </form>
+            </div>
+            
+            <div id="newsEditor" class="hidden">
+                <h3>Редактор новостей</h3>
+                <div class="news-management">
+                    <button id="createNewsBtn" class="tab-btn active">Создать новость</button>
+                    <button id="editNewsBtn" class="tab-btn">Управление новостями</button>
+                </div>
+                
+                <div id="createNewsForm">
+                    <form id="news-form">
+                        <div class="form-group">
+                            <label for="news-title">Заголовок:</label>
+                            <input type="text" id="news-title" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="news-content">Содержание:</label>
+                            <textarea id="news-content" class="simple-editor" rows="10" required></textarea>
+                        </div>
+                        <button type="submit" class="btn"><i class="fas fa-paper-plane"></i> Опубликовать</button>
+                    </form>
+                </div>
+                
+                <div id="editNewsList" class="hidden">
+                    <h4>Управление публикациями</h4>
+                    <div id="adminNewsList" class="admin-news-list">
+                        <!-- Список новостей для редактирования будет здесь -->
+                        <div class="loading-spinner">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <span>Загрузка новостей...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для редактирования новости -->
+    <div id="editNewsModal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close"><i class="fas fa-times"></i></span>
+            <h2><i class="fas fa-edit"></i> Редактирование новости</h2>
+            <form id="edit-news-form">
+                <input type="hidden" id="edit-news-id">
+                <div class="form-group">
+                    <label for="edit-news-title">Заголовок:</label>
+                    <input type="text" id="edit-news-title" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-news-content">Содержание:</label>
+                    <textarea id="edit-news-content" class="simple-editor" rows="10" required></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn"><i class="fas fa-save"></i> Сохранить</button>
+                    <button type="button" id="delete-news-btn" class="btn btn-danger"><i class="fas fa-trash"></i> Удалить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Firebase скрипты -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    
+    <!-- Наши скрипты -->
+    <script src="firebase-config.js"></script>
+    <script src="auth.js"></script>
+    <script src="news.js"></script>
+    <script src="admin.js"></script>
+    <script src="profile.js"></script>
+</body>
+</html> 

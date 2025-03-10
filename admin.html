@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Панель администратора - Новостной портал">
+    <meta name="theme-color" content="#4361ee">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Панель администратора | Новостной портал</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        /* Стили для простых полей ввода */
+        textarea.simple-editor {
+            width: 100%;
+            min-height: 250px;
+            padding: 15px;
+            font-family: 'Montserrat', Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        
+        textarea.simple-editor:focus {
+            outline: none;
+            border-color: #4361ee;
+            box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
+        }
+        
+        /* Разрешаем выделение в полях ввода */
+        input, textarea {
+            user-select: text !important;
+            -webkit-user-select: text !important;
+            -moz-user-select: text !important;
+            -ms-user-select: text !important;
+        }
+    </style>
+    <!-- Отключение сохранения страницы -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+</head>
+<body onselectstart="return false;">
+    <header>
+        <div class="container">
+            <a href="index.html" class="logo">
+                <i class="fas fa-newspaper"></i>
+                <span>Новостной портал</span>
+            </a>
+            <nav>
+                <ul>
+                    <li><a href="index.html"><i class="fas fa-home"></i> Главная</a></li>
+                    <li><a href="profile.html"><i class="fas fa-user"></i> Мой профиль</a></li>
+                    <li><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Выйти</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="admin-page-container">
+            <div id="adminHeader" class="admin-page-header">
+                <h1><i class="fas fa-user-shield"></i> Панель администратора</h1>
+                <p id="adminWelcomeMessage">Добро пожаловать в панель администратора</p>
+            </div>
+            
+            <div id="adminAccessDenied" class="admin-access-denied hidden">
+                <i class="fas fa-lock"></i>
+                <h2>Доступ запрещен</h2>
+                <p>Для доступа к панели администратора необходимо иметь соответствующие права.</p>
+                <a href="index.html" class="btn">Вернуться на главную</a>
+            </div>
+            
+            <div id="adminControls" class="admin-controls hidden">
+                <div class="admin-tabs">
+                    <button id="createNewsTabBtn" class="admin-tab-btn active"><i class="fas fa-plus-circle"></i> Создать новость</button>
+                    <button id="manageNewsTabBtn" class="admin-tab-btn"><i class="fas fa-tasks"></i> Управление новостями</button>
+                </div>
+                
+                <div id="createNewsTab" class="admin-tab-content active">
+                    <div class="section-title">
+                        <h3>Создание новой публикации</h3>
+                    </div>
+                    <form id="newsCreateForm" class="admin-form">
+                        <div class="form-group">
+                            <label for="news-title">Заголовок:</label>
+                            <input type="text" id="news-title" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="news-content">Содержание:</label>
+                            <textarea id="news-content" class="simple-editor" rows="12" required></textarea>
+                        </div>
+                        <button type="submit" class="btn"><i class="fas fa-paper-plane"></i> Опубликовать</button>
+                    </form>
+                </div>
+                
+                <div id="manageNewsTab" class="admin-tab-content">
+                    <div class="section-title">
+                        <h3>Управление публикациями</h3>
+                    </div>
+                    <div id="adminNewsList" class="admin-news-list">
+                        <!-- Список новостей для редактирования будет здесь -->
+                        <div class="loading-spinner">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <span>Загрузка новостей...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p class="copyright">&copy; 2025 Все права защищены.</p>
+        </div>
+    </footer>
+
+    <!-- Модальное окно для редактирования новости -->
+    <div id="editNewsModal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close"><i class="fas fa-times"></i></span>
+            <h2><i class="fas fa-edit"></i> Редактирование новости</h2>
+            <form id="edit-news-form">
+                <input type="hidden" id="edit-news-id">
+                <div class="form-group">
+                    <label for="edit-news-title">Заголовок:</label>
+                    <input type="text" id="edit-news-title" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-news-content">Содержание:</label>
+                    <textarea id="edit-news-content" class="simple-editor" rows="10" required></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn"><i class="fas fa-save"></i> Сохранить</button>
+                    <button type="button" id="delete-news-btn" class="btn btn-danger"><i class="fas fa-trash"></i> Удалить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Модальное окно подтверждения -->
+    <div id="confirmationModal" class="modal hidden">
+        <div class="modal-content confirmation-modal">
+            <h2><i class="fas fa-exclamation-triangle"></i> Подтверждение</h2>
+            <p id="confirmationMessage">Вы уверены, что хотите выполнить это действие?</p>
+            <div class="confirmation-buttons">
+                <button id="confirmYesBtn" class="btn btn-danger">Да, удалить</button>
+                <button id="confirmNoBtn" class="btn btn-secondary">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase скрипты -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    
+    <!-- Наши скрипты -->
+    <script src="firebase-config.js"></script>
+    <script src="auth.js"></script>
+    <script src="news.js"></script>
+    <script src="admin-panel.js"></script>
+</body>
+</html> 
