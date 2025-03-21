@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Профиль пользователя</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+    <style>
+        :root {
+            --primary-color: #4776E6;
+            --secondary-color: #8E54E9;
+            --background-main: #121212;
+            --background-light: #1e1e1e;
+            --background-lighter: #2c2c2c;
+            --text-primary: #ffffff;
+            --text-secondary: #b3b3b3;
+            --accent-color: #8E54E9;
+            --error-color: #f44336;
+            --success-color: #4CAF50;
+            --border-radius: 12px;
+            --transition-speed: 0.3s;
+            --shadow-soft: 0 2px 10px rgba(0, 0, 0, 0.2);
+            --shadow-strong: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Roboto', 'Segoe UI', 'Arial', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--background-main) 0%, #1a1a1a 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .profile-container {
+            width: 100%;
+            max-width: 800px;
+            background: var(--background-light);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow-strong);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .profile-header {
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            position: relative;
+        }
+
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .back-button:hover {
+            transform: translateX(-5px);
+        }
+
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            box-shadow: var(--shadow-soft);
+            position: relative;
+        }
+
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .profile-info {
+            flex: 1;
+        }
+
+        .profile-name {
+            font-size: 2rem;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .profile-id {
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .profile-body {
+            padding: 20px;
+        }
+
+        .profile-section {
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            color: var(--accent-color);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title i {
+            font-size: 1.1em;
+        }
+
+        .section-content {
+            padding: 15px;
+            background: var(--background-lighter);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-soft);
+        }
+
+        .bio-text {
+            line-height: 1.6;
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+        }
+
+        .profile-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border-radius: var(--border-radius);
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: var(--shadow-soft);
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--background-lighter);
+            color: var(--text-primary);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .edit-profile-btn {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-soft);
+        }
+
+        .edit-profile-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+
+        .user-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px;
+            background: var(--background-light);
+            border-radius: var(--border-radius);
+            transition: all 0.3s ease;
+        }
+
+        .stat-item:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 500;
+            color: var(--accent-color);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+
+        .activity-info {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: var(--background-light);
+            border-radius: var(--border-radius);
+        }
+
+        .activity-item i {
+            color: var(--accent-color);
+        }
+
+        .upload-avatar-input {
+            display: none;
+        }
+
+        .change-avatar-btn {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .change-avatar-btn:hover {
+            background: var(--accent-color);
+        }
+
+        /* Медиа-запросы для адаптивного дизайна */
+        @media screen and (max-width: 768px) {
+            .profile-header {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                padding-top: 60px;
+            }
+
+            .back-button {
+                top: 20px;
+                left: 20px;
+            }
+
+            .profile-avatar {
+                width: 100px;
+                height: 100px;
+            }
+
+            .profile-name {
+                font-size: 1.5rem;
+            }
+
+            .profile-id {
+                font-size: 0.9rem;
+            }
+
+            .edit-profile-btn {
+                bottom: 10px;
+                right: 10px;
+            }
+
+            .profile-actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="profile-container">
+        <div class="profile-header">
+            <a href="index.html" class="back-button">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <div class="profile-avatar">
+                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23ccc' d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'%3E%3C/path%3E%3C/svg%3E" 
+                     alt="Аватар пользователя" id="profileAvatar">
+                <label for="avatarUpload" class="change-avatar-btn edit-profile-btn" title="Изменить аватар">
+                    <i class="fas fa-camera"></i>
+                </label>
+                <input type="file" id="avatarUpload" class="upload-avatar-input" accept="image/*">
+            </div>
+            <div class="profile-info">
+                <h1 class="profile-name" id="displayName">Пользователь</h1>
+                <div class="profile-id">ID: <span id="profileUserId">user0000</span></div>
+            </div>
+            <div class="edit-profile-btn" id="editProfileBtn" title="Редактировать профиль">
+                <i class="fas fa-pen"></i>
+            </div>
+        </div>
+
+        <div class="profile-body">
+            <div class="profile-section">
+                <h2 class="section-title">
+                    <i class="fas fa-info-circle"></i> О пользователе
+                </h2>
+                <div class="section-content">
+                    <p class="bio-text" id="userBio">Информация о пользователе не указана.</p>
+                </div>
+            </div>
+
+            <div class="profile-section">
+                <h2 class="section-title">
+                    <i class="fas fa-chart-line"></i> Статистика
+                </h2>
+                <div class="section-content">
+                    <div class="user-stats">
+                        <div class="stat-item">
+                            <div class="stat-value" id="messageCount">0</div>
+                            <div class="stat-label">Сообщений</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="chatCount">0</div>
+                            <div class="stat-label">Чатов</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="daysActive">0</div>
+                            <div class="stat-label">Дней активности</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="profile-section">
+                <h2 class="section-title">
+                    <i class="fas fa-history"></i> Активность
+                </h2>
+                <div class="section-content">
+                    <div class="activity-info">
+                        <div class="activity-item">
+                            <i class="fas fa-clock"></i>
+                            <span>Последний вход: <span id="lastSeen">Неизвестно</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="profile-actions">
+                <button class="btn btn-primary" id="messageUserBtn">
+                    <i class="fas fa-comment"></i> Написать сообщение
+                </button>
+                <button class="btn btn-secondary edit-profile-btn" id="changeAvatarBtn">
+                    <i class="fas fa-image"></i> Изменить аватар
+                </button>
+                <button class="btn btn-secondary edit-profile-btn" id="editInfoBtn">
+                    <i class="fas fa-edit"></i> Редактировать информацию
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Конфигурация Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCxypEXHGW58g4kUJ80qJQDSv_jOHsnh4w",
+            authDomain: "chat-5fe0a.firebaseapp.com",
+            projectId: "chat-5fe0a",
+            storageBucket: "chat-5fe0a.firebasestorage.app",
+            messagingSenderId: "494037188866",
+            appId: "1:494037188866:web:9eadb1d943535e19dd821b",
+            measurementId: "G-W2QDT0QKY5"
+        };
+
+        // Объявляем db глобально
+        let db;
+
+        // Инициализация Firebase
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            const storage = firebase.storage();
+            
+            console.log("Firebase успешно инициализирован");
+        } catch (error) {
+            console.error("Ошибка при инициализации Firebase:", error);
+            alert("Ошибка при инициализации приложения: " + error.message);
+        }
+
+        // Получение ID текущего пользователя из localStorage
+        const userId = localStorage.getItem('chatUserId') || 'user0000';
+
+        // Функция для генерации аватара по умолчанию на основе ID пользователя
+        function generateDefaultAvatar(userId) {
+            // Создаем хеш на основе ID пользователя для стабильного цвета
+            let hash = 0;
+            for (let i = 0; i < userId.length; i++) {
+                hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            
+            // Генерируем цвет на основе хеша
+            const hue = Math.abs(hash % 360);
+            const color = `hsl(${hue}, 70%, 60%)`;
+            const textColor = 'white';
+            
+            // Берем первые 2 буквы ID пользователя
+            const initials = userId.substring(0, 2).toUpperCase();
+            
+            // Создаем SVG аватар с инициалами
+            return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='${encodeURIComponent(color)}'/%3E%3Ctext x='50' y='57' font-family='Arial, sans-serif' font-size='38' font-weight='bold' text-anchor='middle' fill='${encodeURIComponent(textColor)}'%3E${initials}%3C/text%3E%3C/svg%3E`;
+        }
+
+        // Обработчик изменения аватара
+        document.getElementById('avatarUpload').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (file.size > 2 * 1024 * 1024) {
+                alert("Файл слишком большой! Максимальный размер 2 МБ");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64 = e.target.result;
+                
+                // Обновляем аватар в интерфейсе
+                document.getElementById('profileAvatar').src = base64;
+                
+                // Сохраняем аватар в Firestore
+                db.collection('users').doc(userId).update({
+                    avatarBase64: base64,
+                    updatedAt: Date.now()
+                })
+                .then(() => {
+                    console.log("Аватар успешно обновлен");
+                })
+                .catch(error => {
+                    console.error("Ошибка при обновлении аватара:", error);
+                    alert("Не удалось обновить аватар: " + error.message);
+                });
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Кнопка "Изменить аватар"
+        document.getElementById('changeAvatarBtn').addEventListener('click', function() {
+            document.getElementById('avatarUpload').click();
+        });
+
+        // Функция для редактирования информации о пользователе
+        document.getElementById('editInfoBtn').addEventListener('click', function() {
+            const bioText = prompt("Введите информацию о себе:", document.getElementById('userBio').textContent);
+            if (bioText === null) return; // Пользователь нажал "Отмена"
+            
+            db.collection('users').doc(userId).update({
+                bio: bioText,
+                updatedAt: Date.now()
+            })
+            .then(() => {
+                document.getElementById('userBio').textContent = bioText || "Информация о пользователе не указана.";
+                console.log("Информация о пользователе обновлена");
+            })
+            .catch(error => {
+                console.error("Ошибка при обновлении информации:", error);
+                alert("Не удалось обновить информацию: " + error.message);
+            });
+        });
+
+        // Кнопка редактирования профиля
+        document.getElementById('editProfileBtn').addEventListener('click', function() {
+            const displayName = prompt("Введите ваше имя:", document.getElementById('displayName').textContent);
+            if (displayName === null) return; // Пользователь нажал "Отмена"
+            
+            db.collection('users').doc(userId).update({
+                displayName: displayName,
+                updatedAt: Date.now()
+            })
+            .then(() => {
+                document.getElementById('displayName').textContent = displayName || "Пользователь";
+                console.log("Имя пользователя обновлено");
+            })
+            .catch(error => {
+                console.error("Ошибка при обновлении имени:", error);
+                alert("Не удалось обновить имя: " + error.message);
+            });
+        });
+
+        // Функция для получения параметров URL
+        function getURLParameter(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        // Получаем ID пользователя из URL или используем текущего пользователя
+        const profileUserId = getURLParameter('userId') || userId;
+
+        // Проверяем, чей профиль отображаем
+        const isOwnProfile = profileUserId === userId;
+
+        // Обновляем ID пользователя в интерфейсе
+        document.getElementById('profileUserId').textContent = profileUserId;
+
+        // Функция загрузки профиля пользователя
+        function loadUserProfile(profileId) {
+            console.log(`Загрузка профиля пользователя: ${profileId}`);
+            
+            // Обновляем заголовок страницы
+            document.title = `Профиль ${profileId}`;
+            
+            // Получаем данные пользователя из Firestore
+            db.collection('users').doc(profileId).get()
+                .then((doc) => {
+                    if (doc.exists) {
+                        const userData = doc.data();
+                        
+                        // Отображаем имя пользователя, если оно есть
+                        if (userData.displayName) {
+                            document.getElementById('displayName').textContent = userData.displayName;
+                        } else {
+                            document.getElementById('displayName').textContent = profileId;
+                        }
+                        
+                        // Отображаем аватар, если он есть
+                        if (userData.avatarUrl || userData.avatarBase64) {
+                            const avatarImg = document.getElementById('profileAvatar');
+                            if (avatarImg) {
+                                avatarImg.src = userData.avatarUrl || userData.avatarBase64;
+                                avatarImg.onerror = function() {
+                                    this.src = generateDefaultAvatar(profileId);
+                                };
+                            }
+                        } else {
+                            // Устанавливаем аватар по умолчанию
+                            const avatarImg = document.getElementById('profileAvatar');
+                            if (avatarImg) {
+                                avatarImg.src = generateDefaultAvatar(profileId);
+                            }
+                        }
+                        
+                        // Отображаем био пользователя, если оно есть
+                        if (userData.bio) {
+                            document.getElementById('userBio').textContent = userData.bio;
+                        }
+                        
+                        // Последняя активность
+                        if (userData.lastSeen) {
+                            const lastSeenDate = new Date(userData.lastSeen);
+                            document.getElementById('lastSeen').textContent = lastSeenDate.toLocaleString();
+                        }
+                        
+                        // Загружаем статистику пользователя
+                        loadUserStats(profileId);
+                    } else {
+                        console.log("Документ пользователя не существует. Создаем новый.");
+                        // Создаем документ пользователя, если его нет
+                        db.collection('users').doc(profileId).set({
+                            userId: profileId,
+                            createdAt: Date.now(),
+                            lastSeen: Date.now()
+                        })
+                        .then(() => {
+                            console.log("Профиль пользователя создан");
+                            // Устанавливаем аватар по умолчанию
+                            const avatarImg = document.getElementById('profileAvatar');
+                            if (avatarImg) {
+                                avatarImg.src = generateDefaultAvatar(profileId);
+                            }
+                        })
+                        .catch(error => {
+                            console.error("Ошибка при создании профиля:", error);
+                        });
+                    }
+                })
+                .catch((error) => {
+                    console.error("Ошибка при загрузке профиля:", error);
+                    alert("Не удалось загрузить профиль пользователя: " + error.message);
+                });
+        }
+
+        // Функция для загрузки статистики пользователя
+        function loadUserStats(profileId) {
+            // Счетчик сообщений
+            db.collection('messages')
+                .where('userId', '==', profileId)
+                .get()
+                .then(snapshot => {
+                    const globalCount = snapshot.size;
+                    
+                    // Получаем количество личных сообщений
+                    db.collection('private_messages')
+                        .where('userId', '==', profileId)
+                        .get()
+                        .then(privateSnapshot => {
+                            const privateCount = privateSnapshot.size;
+                            const totalCount = globalCount + privateCount;
+                            
+                            document.getElementById('messageCount').textContent = totalCount;
+                        })
+                        .catch(error => {
+                            console.error("Ошибка при получении личных сообщений:", error);
+                            document.getElementById('messageCount').textContent = globalCount;
+                        });
+                })
+                .catch(error => {
+                    console.error("Ошибка при получении сообщений:", error);
+                });
+            
+            // Счетчик чатов
+            db.collection('chats')
+                .where('participants', 'array-contains', profileId)
+                .get()
+                .then(snapshot => {
+                    document.getElementById('chatCount').textContent = snapshot.size;
+                })
+                .catch(error => {
+                    console.error("Ошибка при получении чатов:", error);
+                });
+            
+            // Дни активности (если есть данные firstSeen)
+            db.collection('users')
+                .doc(profileId)
+                .get()
+                .then(doc => {
+                    if (doc.exists) {
+                        const userData = doc.data();
+                        if (userData.firstSeen) {
+                            const firstSeen = new Date(userData.firstSeen);
+                            const now = new Date();
+                            const diffTime = Math.abs(now - firstSeen);
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            document.getElementById('daysActive').textContent = diffDays;
+                        } else {
+                            document.getElementById('daysActive').textContent = 1;
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error("Ошибка при получении данных пользователя:", error);
+                });
+        }
+
+        // Настраиваем видимость кнопок в зависимости от того, свой или чужой профиль
+        function setupButtonVisibility() {
+            const editButtons = document.querySelectorAll('.edit-profile-btn');
+            editButtons.forEach(btn => {
+                btn.style.display = isOwnProfile ? '' : 'none';
+            });
+            
+            // Показываем кнопку "Написать сообщение" только для чужого профиля
+            const messageButton = document.getElementById('messageUserBtn');
+            if (messageButton) {
+                messageButton.style.display = isOwnProfile ? 'none' : '';
+                
+                // Добавляем обработчик для кнопки сообщения
+                if (!isOwnProfile) {
+                    messageButton.onclick = function() {
+                        startChatWithUser(profileUserId);
+                    };
+                }
+            }
+        }
+
+        // Функция для начала чата с пользователем
+        function startChatWithUser(otherUserId) {
+            if (otherUserId === userId) return;
+            
+            // Создаем ID чата (сортируем ID пользователей)
+            const chatId = [userId, otherUserId].sort().join('_');
+            
+            // Проверяем, существует ли уже такой чат
+            db.collection('chats').doc(chatId).get()
+                .then(doc => {
+                    if (!doc.exists) {
+                        // Если чата еще нет, создаем его
+                        return db.collection('chats').doc(chatId).set({
+                            participants: [userId, otherUserId],
+                            createdAt: Date.now(),
+                            lastMessage: '',
+                            lastMessageTime: Date.now()
+                        });
+                    }
+                    return Promise.resolve();
+                })
+                .then(() => {
+                    // Переходим на страницу чата
+                    window.location.href = `index.html?chat=${chatId}`;
+                })
+                .catch(error => {
+                    console.error("Ошибка при создании чата:", error);
+                    alert("Не удалось создать чат: " + error.message);
+                });
+        }
+
+        // Запускаем загрузку профиля при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUserProfile(profileUserId);
+            setupButtonVisibility();
+        });
+    </script>
+</body>
+</html> 
