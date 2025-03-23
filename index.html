@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="NightTalk - удобный мессенджер для общения в реальном времени">
+    <meta name="theme-color" content="#7C4DFF">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>NightTalk</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Фиксация размеров иконок Font Awesome -->
+    <style>
+    .fas, .far, .fa, .fab {
+        font-size: inherit !important;
+        line-height: 1;
+        display: inline-block;
+        vertical-align: middle;
+    }
+    </style>
+    <!-- Улучшенная загрузка Supabase с проверкой ошибок -->
+    <script>
+    window.supabaseLoadError = false;
+    function handleSupabaseError() {
+        window.supabaseLoadError = true;
+        console.error('Не удалось загрузить библиотеку Supabase');
+        document.addEventListener('DOMContentLoaded', function() {
+            const errorMessage = document.createElement('div');
+            errorMessage.className = 'connection-notification';
+            errorMessage.style.display = 'block';
+            errorMessage.innerHTML = '<i class="fas fa-exclamation-circle"></i><span>Не удалось загрузить необходимые ресурсы. Проверьте подключение к интернету и обновите страницу.</span>';
+            document.body.appendChild(errorMessage);
+        });
+    }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js" 
+        onerror="handleSupabaseError()"
+        async></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body oncontextmenu="return false;">
+    <div class="app">
+        <!-- Экран входа -->
+        <div id="login-screen" class="screen active">
+            <div class="login-container">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <i class="fas fa-comment-dots"></i>
+                    </div>
+                    <h1>NightTalk</h1>
+                </div>
+                <p class="welcome-text">Добро пожаловать в мессенджер для свободного общения</p>
+                
+                <div class="login-button-container">
+                    <button id="enter-btn" class="btn-primary">
+                        <i class="fas fa-sign-in-alt"></i>
+                        <span>Войти в чат</span>
+                    </button>
+                </div>
+                
+                <div id="loading" class="loading-indicator hidden">
+                    <div class="spinner"></div>
+                    <p>Подключение к серверу...</p>
+                </div>
+            </div>
+            <div class="decoration-circle c1"></div>
+            <div class="decoration-circle c2"></div>
+            <div class="decoration-circle c3"></div>
+        </div>
+
+        <!-- Экран чата -->
+        <div id="chat-screen" class="screen">
+            <!-- Боковое меню чатов -->
+            <div class="chat-sidebar">
+                <div class="sidebar-header">
+                    <div class="user-info">
+                        <div class="avatar-container" id="current-user-avatar">
+                            <img src="https://via.placeholder.com/40" alt="Аватар" id="user-avatar">
+                            <div class="avatar-status online"></div>
+                        </div>
+                        <div class="username" id="username">user123</div>
+                    </div>
+                    <div class="sidebar-actions">
+                        <button id="new-chat-btn" class="icon-btn" aria-label="Новый чат">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-btn" aria-label="Переключить тему">
+                            <i class="fas fa-moon"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="search-container">
+                    <div class="search-wrapper">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" id="search-input" placeholder="Поиск чатов и контактов...">
+                        <button id="clear-search" class="icon-btn hidden" aria-label="Очистить поиск">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="chat-list-header">
+                    <span>Все чаты</span>
+                    <span id="online-count"><i class="fas fa-users"></i> <span>0 онлайн</span></span>
+                </div>
+                
+                <div class="chat-list" id="chat-list">
+                    <!-- Закрепленный глобальный чат -->
+                    <div class="chat-item pinned active" data-chat-id="global">
+                        <div class="chat-avatar">
+                            <i class="fas fa-globe-americas"></i>
+                        </div>
+                        <div class="chat-info">
+                            <div class="chat-name">Глобальный чат</div>
+                            <div class="chat-last-message">Общий чат для всех пользователей</div>
+                        </div>
+                        <div class="chat-meta">
+                            <div class="chat-time"></div>
+                            <div class="chat-badge hidden">0</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Другие чаты будут добавлены здесь динамически -->
+                </div>
+            </div>
+            
+            <!-- Основной контент чата -->
+            <div class="chat-main">
+                <div class="chat-header">
+                    <div class="header-left">
+                        <button id="sidebar-toggle" class="icon-btn mobile-only" aria-label="Меню">
+                            <i class="fas fa-bars"></i>
+                        </button>
+                        <div class="current-chat-info">
+                            <div class="current-chat-avatar">
+                                <i class="fas fa-globe-americas" id="current-chat-icon"></i>
+                                <img src="" alt="" id="current-chat-img" class="hidden">
+                            </div>
+                            <div class="current-chat-details">
+                                <div class="current-chat-name" id="current-chat-name">Глобальный чат</div>
+                                <div class="current-chat-status" id="current-chat-status">
+                                    <span id="connection-status" class="connection-status">
+                                        <i class="fas fa-signal"></i> <span>онлайн</span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="header-actions">
+                        <button id="chat-info-btn" class="icon-btn" aria-label="Информация о чате">
+                            <i class="fas fa-info-circle"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="chat-messages" id="messages-container">
+                    <!-- Сообщения будут добавляться здесь -->
+                </div>
+
+                <div class="chat-input">
+                    <div class="input-wrapper">
+                        <button class="emoji-btn" aria-label="Эмодзи">
+                            <i class="far fa-smile"></i>
+                        </button>
+                        <input type="text" id="message-input" placeholder="Введите сообщение...">
+                        <button id="send-message" aria-label="Отправить">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Модальное окно поиска пользователей -->
+        <div id="user-search-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Новый чат</h3>
+                    <button class="close-modal icon-btn" aria-label="Закрыть">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="search-wrapper">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" id="user-search-input" placeholder="Поиск по имени пользователя...">
+                    </div>
+                    <div class="user-search-results" id="user-search-results">
+                        <!-- Результаты поиска пользователей -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Уведомление о статусе соединения -->
+        <div id="connection-notification" class="connection-notification hidden">
+            <i class="fas fa-exclamation-circle"></i>
+            <span id="connection-message">Проблемы с подключением</span>
+        </div>
+    </div>
+
+    <!-- Проверка наличия Supabase перед загрузкой основного скрипта -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // При загрузке DOM проверяем и применяем стили для глобального чата
+        function initGlobalChatStyles() {
+            const currentChatIcon = document.getElementById('current-chat-icon');
+            const chatHeader = document.querySelector('.chat-header');
+            
+            if (currentChatIcon) {
+                currentChatIcon.className = 'fas fa-globe-americas';
+                currentChatIcon.style.cssText = '';
+                currentChatIcon.style.fontSize = '24px';
+                currentChatIcon.style.color = '#fff';
+                currentChatIcon.style.display = 'block';
+            }
+            
+            if (chatHeader) {
+                chatHeader.classList.add('global-chat-header');
+            }
+            
+            const globalChatItem = document.querySelector('.chat-item[data-chat-id="global"]');
+            if (globalChatItem) {
+                const chatAvatar = globalChatItem.querySelector('.chat-avatar i');
+                if (chatAvatar) {
+                    chatAvatar.className = 'fas fa-globe-americas';
+                    chatAvatar.style.cssText = '';
+                    chatAvatar.style.fontSize = '20px';
+                    chatAvatar.style.color = '#fff';
+                    chatAvatar.style.display = 'block';
+                }
+            }
+        }
+        
+        // Вызываем функцию стилизации с небольшой задержкой для гарантии загрузки всех элементов
+        setTimeout(initGlobalChatStyles, 300);
+        
+        function checkSupabaseLoaded() {
+            if (window.supabaseLoadError) {
+                console.error('Supabase не загружен, скрипт не будет инициализирован');
+                return;
+            }
+            
+            if (typeof window.supabase === 'undefined') {
+                console.log('Ожидание загрузки Supabase...');
+                setTimeout(checkSupabaseLoaded, 100);
+            } else {
+                console.log('Supabase успешно загружен, инициализация скрипта');
+                
+                // Создаем и добавляем скрипт
+                const scriptElement = document.createElement('script');
+                scriptElement.src = 'script.js';
+                scriptElement.onerror = function() {
+                    console.error('Не удалось загрузить основной скрипт');
+                    const errorMessage = document.getElementById('connection-message');
+                    if (errorMessage) {
+                        errorMessage.textContent = 'Не удалось загрузить необходимые ресурсы';
+                    }
+                    const notification = document.getElementById('connection-notification');
+                    if (notification) {
+                        notification.classList.remove('hidden');
+                    }
+                };
+                document.body.appendChild(scriptElement);
+            }
+        }
+        
+        // Запускаем проверку загрузки Supabase
+        checkSupabaseLoaded();
+
+        // Принудительно переопределяем стили иконок для уверенности в их корректном отображении
+        setTimeout(function() {
+            // Фиксим иконку в заголовке чата
+            const headerIcon = document.getElementById('current-chat-icon');
+            if (headerIcon) {
+                headerIcon.className = 'fas fa-globe-americas';
+                headerIcon.style.cssText = '';
+                headerIcon.style.fontSize = '24px';
+                headerIcon.style.color = '#fff';
+                headerIcon.style.display = 'block';
+            }
+            
+            // Фиксим иконку в боковой панели
+            const sidebarIcon = document.querySelector('.chat-item[data-chat-id="global"] .chat-avatar i');
+            if (sidebarIcon) {
+                sidebarIcon.className = 'fas fa-globe-americas';
+                sidebarIcon.style.cssText = '';
+                sidebarIcon.style.fontSize = '20px';
+                sidebarIcon.style.color = '#fff';
+                sidebarIcon.style.display = 'block';
+            }
+            
+            // Добавляем класс к заголовку чата
+            const chatHeader = document.querySelector('.chat-header');
+            if (chatHeader) {
+                chatHeader.classList.add('global-chat-header');
+            }
+        }, 500);
+    });
+    
+    // Запрет копирования и масштабирования
+    document.addEventListener('keydown', function(e) {
+        // Запрет Ctrl+C, Ctrl+V, Ctrl+A
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'v' || e.key === 'a')) {
+            e.preventDefault();
+        }
+        
+        // Запрет Ctrl+/Cmd+ и Ctrl-/Cmd- (масштабирование)
+        if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '-' || e.key === '=')) {
+            e.preventDefault();
+        }
+    });
+    
+    // Запрет масштабирования жестами на мобильных устройствах
+    document.addEventListener('gesturestart', function(e) {
+        e.preventDefault();
+    });
+    
+    // Запрет масштабирования колесиком мыши при зажатой Ctrl
+    document.addEventListener('wheel', function(e) {
+        if (e.ctrlKey) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+    
+    // Дополнительная защита от выделения текста
+    document.addEventListener('selectstart', function(e) {
+        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+            e.preventDefault();
+            return false;
+        }
+    });
+    
+    // Оптимизация для мобильных устройств - предотвращение задержки касания
+    document.addEventListener('touchstart', function() {}, {passive: true});
+    </script>
+</body>
+</html> 
