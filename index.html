@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NightTalk</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+    <div class="app">
+        <!-- Экран входа -->
+        <div id="login-screen" class="screen active">
+            <div class="login-container">
+                <div class="logo">
+                    <i class="fas fa-comment-dots"></i>
+                    <h1>NightTalk</h1>
+                </div>
+                <p class="welcome-text">Добро пожаловать в анонимный чат</p>
+                <button id="enter-btn" class="btn-primary">Войти в чат</button>
+                <div id="loading" class="loading-indicator hidden">
+                    <div class="spinner"></div>
+                    <p>Подключение...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Экран чата -->
+        <div id="chat-screen" class="screen">
+            <div class="chat-header">
+                <div class="user-info">
+                    <div class="avatar-container" id="current-user-avatar">
+                        <img src="https://via.placeholder.com/40" alt="Аватар" id="user-avatar">
+                    </div>
+                    <div class="username" id="username">user123</div>
+                </div>
+                <div class="header-actions">
+                    <span id="connection-status" class="connection-status">
+                        <i class="fas fa-signal"></i>
+                    </span>
+                    <span id="online-count">0 онлайн</span>
+                    <button id="theme-toggle" class="icon-btn">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="chat-messages" id="messages-container"></div>
+
+            <div class="chat-input">
+                <div class="input-wrapper">
+                    <input type="text" id="message-input" placeholder="Введите сообщение...">
+                    <button id="send-message" class="icon-btn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Уведомление о статусе соединения -->
+        <div id="connection-notification" class="connection-notification hidden">
+            <i class="fas fa-exclamation-circle"></i>
+            <span id="connection-message">Проблемы с подключением</span>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
