@@ -1,996 +1,532 @@
 // Инициализация Supabase
-const SUPABASE_URL = 'https://qiqskfxvlwjhanziheby.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpcXNrZnh2bHdqaGFuemloZWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI3MjU2ODcsImV4cCI6MjA1ODMwMTY4N30.0l6xsQ_zUlu8D_2XUL-LRKtyVlbaRJ8aEVti9QP5Hq4';
+const SUPABASE_URL = 'https://pmnhonmxlwdlnmcigfvr.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtbmhvbm14bHdkbG5tY2lnZnZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI3NTc0MTUsImV4cCI6MjA1ODMzMzQxNX0.aSbWcgh8th__oEcGv8oiKlrVsrtheLZtjM-nZ8bfogA';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Создаем клиент Supabase с более надежными настройками
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-    realtime: {
-        params: {
-            eventsPerSecond: 10
-        }
+// Пользовательские данные
+const users = {
+    adamur: {
+        id: 'adamur',
+        name: 'Adamur',
+        password: 'FFz-vysUNjK6c',
+        avatarClass: 'adamur',
+        avatarSeed: 'adamur2024' // Уникальный seed для генерации аватарки
+    },
+    leonard: {
+        id: 'leonard',
+        name: 'Leonard',
+        password: '5-x8eNTAWwx3x',
+        avatarClass: 'leonard',
+        avatarSeed: 'leonard2024' // Уникальный seed для генерации аватарки
     }
-});
+};
 
-// Включаем дополнительное логирование
-let DEBUG_MODE = true;
-
-function logDebug(...args) {
-    if (DEBUG_MODE) {
-        console.log('[DEBUG]', ...args);
-    }
-}
-
-// Проверяем, что Supabase правильно настроен
-logDebug('Supabase объект:', supabase);
-logDebug('Supabase realtime клиент:', supabase.realtime);
-
-// DOM элементы
-const loginScreen = document.getElementById('login-screen');
-const chatScreen = document.getElementById('chat-screen');
-const enterBtn = document.getElementById('enter-btn');
-const loadingIndicator = document.getElementById('loading');
-const usernameDisplay = document.getElementById('username');
-const messagesContainer = document.getElementById('messages-container');
-const messageInput = document.getElementById('message-input');
-const sendMessageBtn = document.getElementById('send-message');
-const userAvatar = document.getElementById('user-avatar');
-const onlineCountDisplay = document.getElementById('online-count');
-const themeToggleBtn = document.getElementById('theme-toggle');
-const connectionStatus = document.getElementById('connection-status');
-const connectionNotification = document.getElementById('connection-notification');
-const connectionMessage = document.getElementById('connection-message');
+// Основные элементы DOM
+const elements = {
+    loginScreen: document.getElementById('login-screen'),
+    chatScreen: document.getElementById('chat-screen'),
+    passwordInput: document.getElementById('password-input'),
+    loginBtn: document.getElementById('login-btn'),
+    errorMsg: document.getElementById('error-msg'),
+    messagesContainer: document.getElementById('messages'),
+    messageInput: document.getElementById('message-input'),
+    sendBtn: document.getElementById('send-btn'),
+    logoutBtn: document.getElementById('logout-btn'),
+    currentUserAvatar: document.getElementById('current-user-avatar'),
+    currentUserName: document.getElementById('current-user-name'),
+    soundToggle: document.getElementById('sound-toggle')
+};
 
 // Состояние приложения
-let currentUser = null;
-let onlineUsers = 0;
-let channelSubscription = null;
-let oldestMessageTimestamp = null; // Для пагинации
-let isLoadingMoreMessages = false; // Флаг загрузки
-let hasMoreMessages = true; // Флаг наличия старых сообщений
+let state = {
+    currentUser: null,
+    subscription: null,
+    messages: [],
+    muted: localStorage.getItem('mute') === 'true' // Загружаем сохраненное состояние звука
+};
 
-// Коллекция предустановленных аватаров
-const AVATARS = [
-    'https://cdn-icons-png.flaticon.com/512/3022/3022561.png', // Бизнесмен
-    'https://cdn-icons-png.flaticon.com/512/3022/3022554.png', // Программист
-    'https://cdn-icons-png.flaticon.com/512/3022/3022580.png', // Художник
-    'https://cdn-icons-png.flaticon.com/512/3022/3022595.png', // Фермер
-    'https://cdn-icons-png.flaticon.com/512/3022/3022549.png', // Музыкант
-    'https://cdn-icons-png.flaticon.com/512/3022/3022563.png', // Доктор
-    'https://cdn-icons-png.flaticon.com/512/3022/3022574.png', // Спортсмен
-    'https://cdn-icons-png.flaticon.com/512/3022/3022588.png', // Повар
-    'https://cdn-icons-png.flaticon.com/512/3022/3022600.png', // Студент
-    'https://cdn-icons-png.flaticon.com/512/3022/3022608.png'  // Пилот
-];
+// Добавим функционал индикатора набора текста
+let typingTimer;
+const TYPING_DELAY = 2000; // Задержка перед скрытием индикатора набора текста
 
-// Выбор аватара на основе userId
-function getAvatarForUser(userId) {
-    const avatarIndex = userId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % AVATARS.length;
-    return AVATARS[avatarIndex];
+// Инициализация приложения
+document.addEventListener('DOMContentLoaded', initApp);
+
+// Функция инициализации
+async function initApp() {
+    // Добавляем обработчики событий
+    addEventListeners();
+    
+    // Проверяем статус пользователя в localStorage
+    checkUserSession();
+    
+    // Запрещаем масштабирование на мобильных устройствах
+    document.addEventListener('touchmove', preventZoom, { passive: false });
+    document.addEventListener('wheel', preventZoom, { passive: false });
+    
+    // Добавляем обработчик для предотвращения свечения на мобильных устройствах
+    preventHighlightOnMobile();
+    
+    // Инициализируем состояние звука
+    updateSoundButtonState();
 }
 
-// РАЗДЕЛ 1: АВТОРИЗАЦИЯ ПОЛЬЗОВАТЕЛЯ
-
-// Генерация уникального ID на основе IP
-async function generateUniqueId() {
-    try {
-        const response = await fetch('https://api.ipify.org?format=json');
-        const data = await response.json();
-        const ip = data.ip;
-        const hash = await hashString(ip);
-        return hash.slice(0, 10); 
-    } catch (error) {
-        console.error('Ошибка при получении IP:', error);
-        return Math.random().toString(36).substring(2, 12);
+// Предотвращение масштабирования
+function preventZoom(e) {
+    if (e.ctrlKey || (e.touches && e.touches.length > 1)) {
+        e.preventDefault();
     }
 }
 
-// Функция хеширования строки
-async function hashString(str) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(str);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+// Предотвращение свечения на мобильных устройствах
+function preventHighlightOnMobile() {
+    // Отменяем стандартное поведение при касании для всех кнопок
+    const allButtons = document.querySelectorAll('button');
+    allButtons.forEach(button => {
+        button.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            // Эмулируем клик для работы обработчиков
+            button.click();
+        });
+    });
+    
+    // Отключаем стандартное свечение для всех элементов формы
+    const formElements = document.querySelectorAll('input, textarea, button');
+    formElements.forEach(el => {
+        el.style.webkitTapHighlightColor = 'transparent';
+        el.style.webkitTouchCallout = 'none';
+        el.style.outline = 'none';
+    });
 }
 
-// Генерация уникального имени пользователя
-function generateUsername(userId) {
-    const prefixes = ["Ночной", "Тайный", "Космо", "Звёздный", "Мистик", "Фантом", "Призрак", "Странник", "Искатель", "Путник"];
-    const randomPrefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-    const number = userId.slice(0, 4).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 1000;
-    return `${randomPrefix}${number}`;
-}
-
-// Сброс состояния пользователя
-function resetUserState() {
-    localStorage.removeItem('nighttalk_user');
-    currentUser = null;
-    alert('Данные сброшены. Пожалуйста, войдите снова.');
-    window.location.reload();
-}
-
-// Инициализация пользователя - вход в чат
-async function initUser() {
-    try {
-        // Показываем индикатор загрузки
-        loadingIndicator.classList.remove('hidden');
-        enterBtn.disabled = true;
-        
-        // Проверяем, существует ли пользователь в локальном хранилище
-        const storedUser = localStorage.getItem('nighttalk_user');
-        
-        if (storedUser) {
-            try {
-                currentUser = JSON.parse(storedUser);
-                console.log("Пользователь загружен из хранилища:", currentUser);
-                
-                if (!currentUser.id) {
-                    throw new Error('Некорректные данные пользователя');
-                }
-                
-                // Устанавливаем аватар из коллекции
-                currentUser.avatar_url = getAvatarForUser(currentUser.id);
-                localStorage.setItem('nighttalk_user', JSON.stringify(currentUser));
-                
-                // Обновляем аватар в базе данных
-                await supabase
-                    .from('users')
-                    .update({ avatar_url: currentUser.avatar_url })
-                    .eq('id', currentUser.id);
-                
-            } catch (parseError) {
-                console.error('Ошибка данных пользователя:', parseError);
-                resetUserState();
-                return;
-            }
-        } else {
-            // Создаем нового пользователя
-            const userId = await generateUniqueId();
-            const username = generateUsername(userId);
-            const avatarUrl = getAvatarForUser(userId);
-            
-            console.log("Создаем нового пользователя:", username);
-            
-            // Создаем запись пользователя в базе данных
-            const { data, error } = await supabase
-                .from('users')
-                .insert({ 
-                    id: userId,
-                    username: username,
-                    avatar_url: avatarUrl,
-                    last_seen: new Date().toISOString()
-                })
-                .select();
-                
-            if (error) {
-                console.error("Ошибка при создании пользователя:", error);
-                throw error;
-            }
-            
-            currentUser = {
-                id: userId,
-                username: username,
-                avatar_url: avatarUrl
-            };
-            
-            // Сохраняем в локальное хранилище
-            localStorage.setItem('nighttalk_user', JSON.stringify(currentUser));
+// Добавление обработчиков событий
+function addEventListeners() {
+    // Вход в чат
+    elements.loginBtn.addEventListener('click', login);
+    elements.passwordInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') login();
+    });
+    
+    // Отправка сообщения
+    elements.sendBtn.addEventListener('click', sendMessage);
+    elements.messageInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
         }
-        
-        // Обновляем last_seen
+    });
+    
+    // Отслеживание набора текста
+    elements.messageInput.addEventListener('input', handleTyping);
+    
+    // Выход из чата
+    elements.logoutBtn.addEventListener('click', logout);
+    
+    // Запрещаем копирование текста
+    document.addEventListener('copy', e => e.preventDefault());
+    document.addEventListener('selectstart', e => e.preventDefault());
+    
+    // Управление звуком
+    elements.soundToggle.addEventListener('click', toggleSound);
+}
+
+// Функция обработки набора текста
+function handleTyping() {
+    // Отправляем событие о наборе текста
+    sendTypingEvent();
+    
+    // Сбрасываем таймер при каждом нажатии
+    clearTimeout(typingTimer);
+    
+    // Устанавливаем новый таймер для отправки события о прекращении набора
+    typingTimer = setTimeout(() => {
+        sendStopTypingEvent();
+    }, TYPING_DELAY);
+}
+
+// Отправка события о наборе текста
+async function sendTypingEvent() {
+    if (!state.currentUser) return;
+    
+    try {
         await supabase
-            .from('users')
-            .update({ last_seen: new Date().toISOString() })
-            .eq('id', currentUser.id);
-        
-        // Обновляем интерфейс пользователя
-        usernameDisplay.textContent = currentUser.username;
-        userAvatar.src = currentUser.avatar_url;
-        
-        // Проверка статуса реального времени
-        await checkRealtimeStatus();
-        
-        // ВАЖНО: Сначала настраиваем подписку, потом загружаем сообщения
-        startRealtimeSubscription();
-        
-        // Загружаем существующие сообщения
-        await loadMessages();
-        
-        // Обновляем счетчик онлайн пользователей
-        updateOnlineUsers();
-        
-        // Показываем экран чата
-        loginScreen.classList.remove('active');
-        chatScreen.classList.add('active');
-        
+            .channel('typing')
+            .send({
+                type: 'broadcast',
+                event: 'typing',
+                payload: {
+                    user_id: state.currentUser.id,
+                    name: state.currentUser.name
+                }
+            });
     } catch (error) {
-        console.error('Ошибка при входе в чат:', error);
-        alert('Не удалось войти в чат: ' + error.message);
-    } finally {
-        loadingIndicator.classList.add('hidden');
-        enterBtn.disabled = false;
+        console.error('Ошибка при отправке события набора текста:', error);
     }
 }
 
-// РАЗДЕЛ 2: РАБОТА С СООБЩЕНИЯМИ
+// Отправка события о прекращении набора текста
+async function sendStopTypingEvent() {
+    if (!state.currentUser) return;
+    
+    try {
+        await supabase
+            .channel('typing')
+            .send({
+                type: 'broadcast',
+                event: 'stop_typing',
+                payload: {
+                    user_id: state.currentUser.id
+                }
+            });
+    } catch (error) {
+        console.error('Ошибка при отправке события прекращения набора текста:', error);
+    }
+}
 
-// Загрузка сообщений из базы данных
+// Функция входа в чат
+function login() {
+    const enteredPassword = elements.passwordInput.value;
+    let foundUser = null;
+    
+    // Ищем пользователя по паролю
+    for (const userId in users) {
+        if (users[userId].password === enteredPassword) {
+            foundUser = users[userId];
+            break;
+        }
+    }
+    
+    if (!foundUser) {
+        showError('Неверный пароль');
+        return;
+    }
+    
+    // Сохраняем пользователя в состоянии и localStorage
+    state.currentUser = foundUser;
+    localStorage.setItem('currentUser', JSON.stringify(foundUser));
+    
+    // Переходим к экрану чата
+    showChatScreen();
+    
+    // Загружаем историю сообщений
+    loadMessages();
+    
+    // Подписываемся на обновления
+    subscribeToMessages();
+}
+
+// Отображение ошибки входа
+function showError(message) {
+    elements.errorMsg.textContent = message;
+    elements.errorMsg.style.animation = 'none';
+    
+    // Перезапускаем анимацию
+    setTimeout(() => {
+        elements.errorMsg.style.animation = 'fadeIn 0.3s ease-in-out';
+    }, 10);
+}
+
+// Показ экрана чата
+function showChatScreen() {
+    elements.loginScreen.classList.add('hidden');
+    elements.chatScreen.classList.remove('hidden');
+    
+    // Устанавливаем информацию о текущем пользователе
+    elements.currentUserAvatar.className = `avatar ${state.currentUser.avatarClass}`;
+    
+    // Генерируем аватарку с помощью DiceBear API
+    const avatarUrl = generateAvatarUrl(state.currentUser.avatarSeed, state.currentUser.id);
+    elements.currentUserAvatar.style.backgroundImage = `url('${avatarUrl}')`;
+    elements.currentUserAvatar.style.backgroundSize = 'cover';
+    elements.currentUserAvatar.style.backgroundPosition = 'center';
+    
+    elements.currentUserName.textContent = state.currentUser.name;
+    
+    // Фокус на поле ввода сообщения
+    elements.messageInput.focus();
+}
+
+// Функция для генерации URL аватарки с помощью DiceBear API
+function generateAvatarUrl(seed, userId) {
+    // Выбираем разные стили для разных пользователей
+    const style = userId === 'adamur' ? 'avataaars' : 'bottts';
+    // Используем DiceBear API для генерации аватарки
+    return `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}&backgroundColor=b6e3f4,c0aede&radius=50`;
+}
+
+// Показ экрана входа
+function showLoginScreen() {
+    elements.chatScreen.classList.add('hidden');
+    elements.loginScreen.classList.remove('hidden');
+    
+    // Сбрасываем значения полей
+    elements.passwordInput.value = '';
+    elements.errorMsg.textContent = '';
+    
+    // Фокус на поле ввода пароля
+    elements.passwordInput.focus();
+}
+
+// Загрузка истории сообщений
 async function loadMessages() {
     try {
-        console.log("Загрузка существующих сообщений...");
-        
-        // Очищаем контейнер сообщений
-        messagesContainer.innerHTML = '';
-        
-        // Сбрасываем состояние пагинации
-        oldestMessageTimestamp = null;
-        hasMoreMessages = true;
-        
-        // Загружаем последние 50 сообщений
         const { data, error } = await supabase
             .from('messages')
-            .select(`
-                id,
-                content,
-                image_url,
-                created_at,
-                user_id,
-                users (
-                    id,
-                    username,
-                    avatar_url
-                )
-            `)
-            .order('created_at', { ascending: false }) // Сначала новые
-            .limit(50);
+            .select('*')
+            .order('created_at', { ascending: true });
             
-        if (error) {
-            throw error;
-        }
+        if (error) throw error;
         
-        // Если есть сообщения
-        if (data && data.length > 0) {
-            // Сохраняем timestamp самого старого сообщения
-            oldestMessageTimestamp = data[data.length - 1].created_at;
-            
-            // Переворачиваем массив, чтобы отобразить сначала старые сообщения
-            const reversedData = data.reverse();
-            
-            // Добавляем сообщения в DOM
-            reversedData.forEach(message => {
-                renderMessage(message);
-            });
-            
-            // Проверяем, есть ли ещё сообщения
-            hasMoreMessages = data.length === 50;
-        } else {
-            console.log("Нет сообщений для отображения");
-            messagesContainer.innerHTML = '<div class="no-messages">Станьте первым, кто напишет сообщение!</div>';
-            hasMoreMessages = false;
-        }
-        
-        // Если есть старые сообщения, добавляем кнопку загрузки
-        updateLoadMoreButton();
-        
-        // Прокручиваем к последнему сообщению
-        scrollToBottom();
-        
+        state.messages = data || [];
+        renderMessages();
     } catch (error) {
-        console.error('Ошибка при загрузке сообщений:', error);
-        messagesContainer.innerHTML = '<div class="error-message">Ошибка при загрузке сообщений</div>';
+        console.error('Ошибка загрузки сообщений:', error);
     }
 }
 
-// Функция для загрузки старых сообщений
-async function loadOlderMessages() {
-    if (isLoadingMoreMessages || !hasMoreMessages || !oldestMessageTimestamp) return;
-    
-    try {
-        isLoadingMoreMessages = true;
-        
-        // Показываем индикатор загрузки
-        const loadingIndicator = document.getElementById('load-more-indicator');
-        if (loadingIndicator) {
-            loadingIndicator.classList.remove('hidden');
-        }
-        
-        logDebug("Загрузка старых сообщений до", oldestMessageTimestamp);
-        
-        const { data, error } = await supabase
-            .from('messages')
-            .select(`
-                id,
-                content,
-                image_url,
-                created_at,
-                user_id,
-                users (
-                    id,
-                    username,
-                    avatar_url
-                )
-            `)
-            .lt('created_at', oldestMessageTimestamp) // Сообщения, созданные ранее самого старого
-            .order('created_at', { ascending: false })
-            .limit(50);
-            
-        if (error) {
-            throw error;
-        }
-        
-        // Сохраняем текущую позицию прокрутки и высоту
-        const scrollPosition = messagesContainer.scrollTop;
-        const oldHeight = messagesContainer.scrollHeight;
-        
-        // Если есть сообщения
-        if (data && data.length > 0) {
-            // Сохраняем timestamp самого старого сообщения
-            oldestMessageTimestamp = data[data.length - 1].created_at;
-            
-            // Создаем временный контейнер
-            const tempContainer = document.createElement('div');
-            
-            // Переворачиваем массив и добавляем сообщения
-            const reversedData = data.reverse();
-            reversedData.forEach(message => {
-                // Создаем сообщение в temp контейнере
-                renderMessageToContainer(message, tempContainer);
-            });
-            
-            // Вставляем все новые сообщения в начало контейнера
-            messagesContainer.insertBefore(tempContainer, messagesContainer.firstChild);
-            
-            // Перемещаем все дочерние элементы из временного контейнера напрямую в основной
-            while (tempContainer.firstChild) {
-                messagesContainer.insertBefore(tempContainer.firstChild, tempContainer);
-            }
-            
-            // Удаляем временный контейнер
-            messagesContainer.removeChild(tempContainer);
-            
-            // Проверяем, есть ли ещё сообщения
-            hasMoreMessages = data.length === 50;
-            
-            // Восстанавливаем позицию прокрутки с учетом новой высоты
-            const newHeight = messagesContainer.scrollHeight;
-            messagesContainer.scrollTop = scrollPosition + (newHeight - oldHeight);
-            
-            logDebug(`Загружено ${data.length} старых сообщений`);
-        } else {
-            hasMoreMessages = false;
-            logDebug("Больше старых сообщений нет");
-        }
-        
-        // Обновляем кнопку загрузки
-        updateLoadMoreButton();
-        
-    } catch (error) {
-        console.error("Ошибка при загрузке старых сообщений:", error);
-        
-        // Показываем сообщение об ошибке над чатом
-        const errorElement = document.createElement('div');
-        errorElement.className = 'error-message';
-        errorElement.textContent = 'Не удалось загрузить старые сообщения';
-        errorElement.style.margin = '10px 0';
-        messagesContainer.insertBefore(errorElement, messagesContainer.firstChild);
-        
-        // Удаляем сообщение об ошибке через 5 секунд
-        setTimeout(() => {
-            if (errorElement.parentNode) {
-                errorElement.parentNode.removeChild(errorElement);
-            }
-        }, 5000);
-    } finally {
-        isLoadingMoreMessages = false;
-        
-        // Скрываем индикатор загрузки
-        const loadingIndicator = document.getElementById('load-more-indicator');
-        if (loadingIndicator) {
-            loadingIndicator.classList.add('hidden');
-        }
-    }
-}
-
-// Функция для обновления кнопки "Загрузить еще"
-function updateLoadMoreButton() {
-    // Проверяем наличие существующей кнопки
-    let loadMoreContainer = document.getElementById('load-more-container');
-    
-    // Удаляем контейнер, если он существует
-    if (loadMoreContainer) {
-        messagesContainer.removeChild(loadMoreContainer);
+// Подписка на обновления сообщений в реальном времени
+function subscribeToMessages() {
+    // Отписываемся от предыдущей подписки, если она существует
+    if (state.subscription) {
+        state.subscription.unsubscribe();
     }
     
-    // Если есть еще сообщения для загрузки
-    if (hasMoreMessages) {
-        // Создаем контейнер кнопки
-        loadMoreContainer = document.createElement('div');
-        loadMoreContainer.id = 'load-more-container';
-        loadMoreContainer.className = 'load-more-container';
-        
-        loadMoreContainer.innerHTML = `
-            <button id="load-more-btn" class="load-more-btn">
-                <i class="fas fa-history"></i> Загрузить предыдущие сообщения
-            </button>
-            <div id="load-more-indicator" class="spinner hidden"></div>
-        `;
-        
-        // Добавляем контейнер в начало списка сообщений
-        messagesContainer.insertBefore(loadMoreContainer, messagesContainer.firstChild);
-        
-        // Добавляем обработчик клика
-        document.getElementById('load-more-btn').addEventListener('click', loadOlderMessages);
-    }
-}
-
-// Функция для рендеринга сообщения в указанный контейнер
-function renderMessageToContainer(message, container) {
-    // Проверка на корректность данных
-    if (!message || !message.users) {
-        console.error("Некорректные данные сообщения");
-        return;
-    }
-    
-    // Проверяем, является ли это собственным сообщением
-    const isOwnMessage = message.user_id === currentUser.id;
-    
-    // Создаем элемент сообщения
-    const messageElement = document.createElement('div');
-    messageElement.classList.add('message');
-    
-    // Добавляем классы в зависимости от типа сообщения
-    if (isOwnMessage) {
-        messageElement.classList.add('own');
-    }
-    
-    messageElement.id = 'msg-' + message.id;
-    
-    // Определяем URL аватара
-    const avatarUrl = isOwnMessage 
-        ? currentUser.avatar_url 
-        : (message.users.avatar_url || getAvatarForUser(message.users.id));
-    
-    // Форматируем время
-    const messageTime = new Date(message.created_at);
-    const formattedTime = messageTime.toLocaleTimeString('ru-RU', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-    });
-    
-    // Создаем HTML сообщения
-    messageElement.innerHTML = `
-        <div class="message-avatar">
-            <img src="${avatarUrl}" alt="Аватар">
-        </div>
-        <div class="message-content">
-            <div class="message-header">
-                <span class="message-name">${message.users.username}</span>
-                <span class="message-time">${formattedTime}</span>
-            </div>
-            <div class="message-text">${escapeHtml(message.content)}</div>
-        </div>
-    `;
-    
-    // Добавляем в указанный контейнер
-    container.appendChild(messageElement);
-}
-
-// Обновляем функцию renderMessage для использования общей логики
-function renderMessage(message) {
-    // Если сообщение уже есть в DOM, не добавляем
-    const existingMsg = document.getElementById(`msg-${message.id}`);
-    if (existingMsg && !message.id.toString().startsWith('temp-')) {
-        return;
-    }
-    
-    // Если это временное сообщение
-    if (message.id.toString().startsWith('temp-')) {
-        // Создаем элемент сообщения
-        const messageElement = document.createElement('div');
-        messageElement.classList.add('message', 'own', 'temp');
-        messageElement.id = message.id;
-        
-        // Создаем HTML временного сообщения
-        messageElement.innerHTML = `
-            <div class="message-avatar">
-                <img src="${currentUser.avatar_url}" alt="Аватар">
-            </div>
-            <div class="message-content">
-                <div class="message-header">
-                    <span class="message-name">${currentUser.username}</span>
-                    <span class="message-time">Отправляется...</span>
-                </div>
-                <div class="message-text">${escapeHtml(message.content)}</div>
-            </div>
-        `;
-        
-        // Добавляем в контейнер сообщений
-        messagesContainer.appendChild(messageElement);
-        return;
-    }
-    
-    // Проверяем, является ли это сообщением от другого пользователя (для анимации)
-    const isOtherUserMessage = message.user_id !== currentUser.id;
-    
-    // Создаем элемент для основных сообщений
-    const messageElement = document.createElement('div');
-    messageElement.classList.add('message');
-    
-    // Добавляем классы для стилизации
-    if (message.user_id === currentUser.id) {
-        messageElement.classList.add('own');
-    } else if (isOtherUserMessage) {
-        messageElement.classList.add('new'); // Для анимации новых сообщений
-    }
-    
-    messageElement.id = 'msg-' + message.id;
-    
-    // Используем renderMessageToContainer для общей логики
-    renderMessageToContainer(message, messageElement);
-    
-    // Переносим дочерние элементы в messageElement
-    while (messageElement.firstChild) {
-        messagesContainer.appendChild(messageElement.firstChild);
-    }
-    
-    // Добавляем в контейнер сообщений
-    messagesContainer.appendChild(messageElement);
-}
-
-// Обновление индикатора соединения
-function updateConnectionStatus(isConnected) {
-    if (isConnected) {
-        connectionStatus.innerHTML = '<i class="fas fa-signal"></i>';
-        connectionStatus.classList.remove('offline');
-        connectionNotification.classList.add('hidden');
-    } else {
-        connectionStatus.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
-        connectionStatus.classList.add('offline');
-        connectionMessage.textContent = 'Проблема с подключением к серверу';
-        connectionNotification.classList.remove('hidden');
-        
-        // Скрываем уведомление через 5 секунд
-        setTimeout(() => {
-            connectionNotification.classList.add('hidden');
-        }, 5000);
-    }
-}
-
-// Функция настройки подписки на новые сообщения
-function startRealtimeSubscription() {
-    logDebug("Настройка подписки на обновления в реальном времени...");
-    
-    // Если есть существующая подписка, удаляем её
-    if (channelSubscription) {
-        supabase.removeChannel(channelSubscription);
-    }
-    
-    // Обновляем статус соединения
-    updateConnectionStatus(true);
-    
-    try {
-        // Создаем канал для получения сообщений в реальном времени с улучшенными настройками
-        channelSubscription = supabase
-            .channel('realtime:public:messages')
-            .on('postgres_changes', 
-                {
-                    event: '*', // Подписываемся на все события
-                    schema: 'public', 
-                    table: 'messages'
-                }, 
-                handleNewMessage
-            )
-            .subscribe((status) => {
-                logDebug(`Статус подписки на канал: ${status}`);
-                if (status === 'SUBSCRIBED') {
-                    logDebug('Успешно подписались на обновления чата в реальном времени');
-                    updateConnectionStatus(true);
-                    // Тестовое сообщение в консоль
-                    logDebug("Канал реального времени активирован, ожидание сообщений...");
-                } else if (status === 'CHANNEL_ERROR') {
-                    console.error('Ошибка при подписке на канал');
-                    updateConnectionStatus(false);
-                    // Попытка переподключения через 3 секунды
-                    setTimeout(() => {
-                        logDebug('Попытка переподключения к каналу реального времени...');
-                        startRealtimeSubscription();
-                    }, 3000);
-                }
-            });
-            
-        logDebug("Подписка на обновления настроена, текущий статус:", channelSubscription.state);
-    } catch (error) {
-        console.error("Ошибка при настройке канала:", error);
-        updateConnectionStatus(false);
-    }
-}
-
-// Обработчик новых сообщений
-async function handleNewMessage(payload) {
-    logDebug("Получено событие от Supabase:", payload);
-    
-    if (!payload || !payload.new) {
-        console.error("Получено некорректное событие без данных");
-        return;
-    }
-    
-    // Обрабатываем только события вставки
-    if (payload.eventType !== 'INSERT') {
-        logDebug("Игнорируем событие, не является вставкой нового сообщения");
-        return;
-    }
-    
-    logDebug("Обработка нового сообщения с ID:", payload.new.id);
-    
-    // Проверяем, что текущий пользователь инициализирован
-    if (!currentUser || !currentUser.id) {
-        console.error("Текущий пользователь не инициализирован!");
-        return;
-    }
-    
-    // Если это не наше сообщение, загружаем полные данные
-    if (payload.new.user_id !== currentUser.id) {
-        try {
-            logDebug("Получено новое сообщение от другого пользователя:", payload.new);
-            
-            // Проверяем, не отображено ли уже это сообщение
-            const existingMsg = document.getElementById(`msg-${payload.new.id}`);
-            if (existingMsg) {
-                logDebug("Сообщение уже отображено, пропускаем:", payload.new.id);
-                return;
-            }
-            
-            const { data, error } = await supabase
-                .from('messages')
-                .select(`
-                    id,
-                    content,
-                    image_url,
-                    created_at,
-                    user_id,
-                    users (
-                        id,
-                        username,
-                        avatar_url
-                    )
-                `)
-                .eq('id', payload.new.id)
-                .single();
-                
-            if (error) {
-                console.error('Ошибка при получении данных сообщения:', error);
-                logDebug("Использую минимальные данные для отображения сообщения");
-                
-                // Получаем информацию о пользователе отдельно
-                let username = "Пользователь";
-                let avatarUrl = getAvatarForUser(payload.new.user_id);
-                
-                try {
-                    const { data: userData } = await supabase
-                        .from('users')
-                        .select('username, avatar_url')
-                        .eq('id', payload.new.user_id)
-                        .single();
-                        
-                    if (userData) {
-                        username = userData.username;
-                        avatarUrl = userData.avatar_url || avatarUrl;
-                    }
-                } catch (userError) {
-                    console.error("Не удалось получить данные пользователя:", userError);
-                }
-                
-                // Если не удалось получить полные данные, отображаем с минимальными данными
-                const minimalMessage = {
-                    id: payload.new.id,
-                    content: payload.new.content,
-                    created_at: payload.new.created_at,
-                    user_id: payload.new.user_id,
-                    users: {
-                        id: payload.new.user_id,
-                        username: username,
-                        avatar_url: avatarUrl
-                    }
-                };
-                
-                renderMessage(minimalMessage);
+    // Создаем новую подписку на сообщения
+    state.subscription = supabase
+        .channel('messages-channel')
+        .on('postgres_changes', 
+            { 
+                event: 'INSERT', 
+                schema: 'public', 
+                table: 'messages' 
+            }, 
+            payload => {
+                const newMessage = payload.new;
+                state.messages.push(newMessage);
+                renderMessage(newMessage);
                 scrollToBottom();
-                
-                // Проигрываем звук уведомления
-                playNotificationSound();
-                return;
             }
-            
-            if (data) {
-                logDebug("Получены полные данные сообщения:", data);
-                
-                // Добавляем новое сообщение
-                renderMessage(data);
-                scrollToBottom();
-                
-                // Проигрываем звук уведомления
-                playNotificationSound();
+        )
+        .subscribe();
+    
+    // Подписываемся на события набора текста
+    supabase
+        .channel('typing')
+        .on('broadcast', { event: 'typing' }, payload => {
+            if (payload.payload.user_id !== state.currentUser.id) {
+                showTypingIndicator(payload.payload.name);
             }
-        } catch (err) {
-            console.error('Ошибка при обработке нового сообщения:', err);
-        }
-    } else {
-        logDebug("Игнорируем собственное сообщение");
-    }
-}
-
-// Функция для проигрывания звука уведомления (опционально)
-function playNotificationSound() {
-    try {
-        const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-message-pop-alert-2354.mp3');
-        audio.volume = 0.3;
-        audio.play();
-    } catch (e) {
-        console.log('Невозможно проиграть звук уведомления:', e);
-    }
-}
-
-// РАЗДЕЛ 3: ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-
-// Обновление счетчика онлайн пользователей
-async function updateOnlineUsers() {
-    try {
-        // Получаем пользователей, которые были онлайн в последние 10 минут
-        const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-        
-        const { data, error, count } = await supabase
-            .from('users')
-            .select('id', { count: 'exact' })
-            .gt('last_seen', tenMinutesAgo);
-            
-        if (!error) {
-            onlineUsers = count;
-            onlineCountDisplay.textContent = `${onlineUsers} онлайн`;
-        }
-    } catch (error) {
-        console.error('Ошибка при получении списка онлайн пользователей:', error);
-    }
-}
-
-// Безопасное отображение HTML
-function escapeHtml(text) {
-    return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-
-// Прокрутка к нижней части чата
-function scrollToBottom() {
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
-
-// Переключение темы (заглушка)
-function toggleTheme() {
-    alert('Функция переключения на светлую тему в разработке!');
-}
-
-// РАЗДЕЛ 4: СЛУШАТЕЛИ СОБЫТИЙ И ИНИЦИАЛИЗАЦИЯ
-
-// Кнопка входа в чат
-enterBtn.addEventListener('click', initUser);
-
-// Отправка сообщения по клику на кнопку
-sendMessageBtn.addEventListener('click', sendMessage);
-
-// Отправка сообщения по нажатию Enter
-messageInput.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
-        sendMessage();
-    }
-});
-
-// Кнопка переключения темы
-themeToggleBtn.addEventListener('click', toggleTheme);
-
-// Обновление статуса пользователя каждые 5 минут
-setInterval(async () => {
-    if (currentUser && currentUser.id) {
-        try {
-            await supabase
-                .from('users')
-                .update({ last_seen: new Date().toISOString() })
-                .eq('id', currentUser.id);
-            
-            updateOnlineUsers();
-        } catch (error) {
-            console.error('Ошибка при обновлении статуса:', error);
-        }
-    }
-}, 5 * 60 * 1000);
-
-// Дополнительный функционал: сброс данных пользователя по двойному клику на аватар
-userAvatar.addEventListener('dblclick', () => {
-    if (confirm('Сбросить данные пользователя?')) {
-        resetUserState();
-    }
-});
-
-// Обновляем статус соединения
-window.addEventListener('online', function() {
-    console.log('Соединение восстановлено. Переподключение к каналу...');
-    updateConnectionStatus(true);
-    if (currentUser) {
-        startRealtimeSubscription();
-        updateOnlineUsers();
-    }
-});
-
-// Обновляем статус соединения при потере соединения
-window.addEventListener('offline', function() {
-    console.log('Соединение потеряно');
-    updateConnectionStatus(false);
-});
-
-// Добавление состояния подключения
-window.addEventListener('load', () => {
-    if (!navigator.onLine) {
-        updateConnectionStatus(false);
-        alert('Вы находитесь в автономном режиме. Пожалуйста, проверьте подключение к интернету.');
-    } else {
-        updateConnectionStatus(true);
-    }
-});
-
-// При инициализации чата проверяем работоспособность канала реального времени
-async function checkRealtimeStatus() {
-    try {
-        logDebug("Проверка статуса подписки на реальное время...");
-        
-        // Проверяем доступные каналы
-        const allChannels = supabase.getChannels();
-        logDebug("Текущие каналы:", allChannels);
-        
-        try {
-            const { data, error } = await supabase.rpc('get_realtime_status');
-            if (error) {
-                console.error("Ошибка при проверке статуса RPC:", error);
-                return;
+        })
+        .on('broadcast', { event: 'stop_typing' }, payload => {
+            if (payload.payload.user_id !== state.currentUser.id) {
+                hideTypingIndicator();
             }
-            logDebug("Статус реального времени из БД:", data);
-        } catch (error) {
-            console.error("Ошибка при вызове RPC функции:", error);
-        }
-        
-        // Дополнительная проверка соединения
-        const isConnected = supabase.realtime.isConnected();
-        logDebug("Supabase realtime соединение:", isConnected ? "Подключено" : "Отключено");
-    } catch (error) {
-        console.error("Ошибка при проверке статуса реального времени:", error);
-    }
-}
-
-// Инициализируем клиент realtime при загрузке страницы
-window.addEventListener('load', async () => {
-    logDebug("Страница загружена, инициализация Supabase realtime...");
-    
-    // Настраиваем обработчик для отладки событий realtime
-    supabase.realtime.forValidToken(token => {
-        logDebug('Realtime token получен:', token && token.slice(0, 10) + '...');
-        return token;
-    });
-    
-    // Проверяем онлайн-статус
-    if (!navigator.onLine) {
-        updateConnectionStatus(false);
-        alert('Вы находитесь в автономном режиме. Пожалуйста, проверьте подключение к интернету.');
-    } else {
-        updateConnectionStatus(true);
-    }
-});
-
-// Функция для отправки тестового сообщения (для отладки)
-async function sendTestMessage() {
-    if (!currentUser) {
-        console.error("Нельзя отправить тестовое сообщение - пользователь не авторизован");
-        return;
-    }
-    
-    try {
-        const testMessage = `Тестовое сообщение ${new Date().toLocaleTimeString()}`;
-        logDebug("Отправка тестового сообщения:", testMessage);
-        
-        const { data, error } = await supabase
-            .from('messages')
-            .insert({
-                user_id: currentUser.id,
-                content: testMessage
-            })
-            .select();
-        
-        if (error) {
-            throw error;
-        }
-        
-        logDebug("Тестовое сообщение отправлено успешно:", data);
-        
-    } catch (error) {
-        console.error("Ошибка при отправке тестового сообщения:", error);
-    }
+        })
+        .subscribe();
 }
 
 // Отправка сообщения
 async function sendMessage() {
-    const message = messageInput.value.trim();
+    const content = elements.messageInput.value.trim();
+    if (!content) return;
     
-    if (!message) {
-        return; // Пустое сообщение не отправляем
-    }
+    const message = {
+        sender_id: state.currentUser.id,
+        sender_name: state.currentUser.name,
+        content,
+        created_at: new Date().toISOString()
+    };
     
     try {
-        console.log("Отправка сообщения: " + message);
+        const { error } = await supabase
+            .from('messages')
+            .insert([message]);
+            
+        if (error) throw error;
         
         // Очищаем поле ввода
-        messageInput.value = '';
-        
-        // Создаем временное сообщение для отображения
-        const tempId = 'temp-' + Date.now();
-        const tempMessage = {
-            id: tempId,
-            content: message,
-            created_at: new Date().toISOString(),
-            user_id: currentUser.id,
-            users: {
-                id: currentUser.id,
-                username: currentUser.username,
-                avatar_url: currentUser.avatar_url
-            }
-        };
-        
-        // Отображаем временное сообщение
-        renderMessage(tempMessage);
-        scrollToBottom();
-        
-        // Отправляем сообщение в базу данных
-        console.log("Сохранение сообщения в базе данных...");
-        const { data, error } = await supabase
-            .from('messages')
-            .insert({
-                user_id: currentUser.id,
-                content: message
-            })
-            .select()
-            .single();
-        
-        // Удаляем временное сообщение
-        const tempElement = document.getElementById(tempId);
-        if (tempElement) {
-            tempElement.remove();
-        }
-            
-        if (error) {
-            console.error("Ошибка при сохранении сообщения:", error);
-            throw error;
-        }
-        
-        console.log("Сообщение успешно сохранено:", data);
-        
-        // Получаем полное сообщение с пользовательскими данными
-        const fullMessage = {
-            ...data,
-            users: {
-                id: currentUser.id,
-                username: currentUser.username,
-                avatar_url: currentUser.avatar_url
-            }
-        };
-        
-        // Рендерим постоянное сообщение
-        renderMessage(fullMessage);
-        scrollToBottom();
-        
-        // Проверяем активность канала после отправки сообщения
-        console.log("Текущий статус канала realtime:", channelSubscription.state);
-        
+        elements.messageInput.value = '';
     } catch (error) {
-        console.error('Ошибка при отправке сообщения:', error);
-        alert('Не удалось отправить сообщение. Пожалуйста, проверьте подключение к интернету.');
+        console.error('Ошибка отправки сообщения:', error);
+    }
+}
+
+// Отрисовка всех сообщений
+function renderMessages() {
+    elements.messagesContainer.innerHTML = '';
+    
+    state.messages.forEach(message => {
+        renderMessage(message);
+    });
+    
+    scrollToBottom();
+}
+
+// Отрисовка одного сообщения
+function renderMessage(message) {
+    const isCurrentUser = message.sender_id === state.currentUser.id;
+    const messageClass = isCurrentUser ? 'sent' : 'received';
+    const avatarClass = message.sender_id === 'adamur' ? 'adamur' : 'leonard';
+    
+    // Скрываем индикатор набора текста при получении сообщения
+    if (!isCurrentUser) {
+        hideTypingIndicator();
+    }
+    
+    const messageElement = document.createElement('div');
+    messageElement.className = `message ${messageClass}`;
+    
+    const time = new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    // Генерируем URL аватарки
+    const seed = message.sender_id === 'adamur' ? users.adamur.avatarSeed : users.leonard.avatarSeed;
+    const avatarUrl = generateAvatarUrl(seed, message.sender_id);
+    
+    messageElement.innerHTML = `
+        <div class="message-info">
+            <div class="message-avatar ${avatarClass}" style="background-image: url('${avatarUrl}');"></div>
+            <span class="message-sender">${message.sender_name}</span>
+            <span class="message-time">${time}</span>
+        </div>
+        <div class="message-content">${message.content}</div>
+    `;
+    
+    // Скрываем сообщение изначально для эффекта появления
+    messageElement.style.opacity = '0';
+    messageElement.style.transform = 'translateY(20px) scale(0.97)';
+    
+    elements.messagesContainer.appendChild(messageElement);
+    
+    // Добавляем небольшую задержку для более естественной анимации
+    setTimeout(() => {
+        messageElement.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+        messageElement.style.opacity = '1';
+        messageElement.style.transform = 'translateY(0) scale(1)';
+        
+        // Звуковой эффект при получении сообщения
+        if (!isCurrentUser) {
+            playMessageSound('receive');
+        } else {
+            playMessageSound('send');
+        }
+    }, isCurrentUser ? 50 : 150);
+    
+    scrollToBottom();
+}
+
+// Звуковые эффекты для сообщений
+function playMessageSound(type) {
+    // Проверяем, что звуки не отключены пользователем
+    if (state.muted) return;
+    
+    // Создаем звуковой эффект программно
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    // Настраиваем звук в зависимости от типа
+    if (type === 'send') {
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.2);
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.2);
+    } else {
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(660, audioContext.currentTime);
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.3);
+    }
+}
+
+// Прокрутка контейнера сообщений вниз
+function scrollToBottom() {
+    elements.messagesContainer.scrollTop = elements.messagesContainer.scrollHeight;
+}
+
+// Функция выхода из чата
+function logout() {
+    // Отписываемся от обновлений
+    if (state.subscription) {
+        state.subscription.unsubscribe();
+        state.subscription = null;
+    }
+    
+    // Очищаем состояние и localStorage
+    state.currentUser = null;
+    state.messages = [];
+    localStorage.removeItem('currentUser');
+    
+    // Показываем экран входа
+    showLoginScreen();
+}
+
+// Проверка сохраненной сессии пользователя
+function checkUserSession() {
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) {
+        try {
+            state.currentUser = JSON.parse(savedUser);
+            showChatScreen();
+            loadMessages();
+            subscribeToMessages();
+        } catch (error) {
+            console.error('Ошибка при восстановлении сессии:', error);
+            localStorage.removeItem('currentUser');
+        }
+    }
+}
+
+// Показ индикатора набора текста
+function showTypingIndicator(name) {
+    // Удаляем существующий индикатор, если он есть
+    hideTypingIndicator();
+    
+    // Создаем новый индикатор
+    const typingElement = document.createElement('div');
+    typingElement.className = 'typing-indicator';
+    typingElement.id = 'typing-indicator';
+    
+    typingElement.innerHTML = `
+        <span class="typing-text">${name} печатает</span>
+        <div class="typing-bubble"></div>
+        <div class="typing-bubble"></div>
+        <div class="typing-bubble"></div>
+    `;
+    
+    elements.messagesContainer.appendChild(typingElement);
+    scrollToBottom();
+}
+
+// Скрытие индикатора набора текста
+function hideTypingIndicator() {
+    const typingElement = document.getElementById('typing-indicator');
+    if (typingElement) {
+        typingElement.remove();
+    }
+}
+
+// Функция включения/выключения звука
+function toggleSound() {
+    state.muted = !state.muted;
+    localStorage.setItem('mute', state.muted);
+    updateSoundButtonState();
+}
+
+// Обновляем внешний вид кнопки звука
+function updateSoundButtonState() {
+    if (state.muted) {
+        elements.soundToggle.classList.add('muted');
+        elements.soundToggle.querySelector('i').className = 'fas fa-volume-mute';
+    } else {
+        elements.soundToggle.classList.remove('muted');
+        elements.soundToggle.querySelector('i').className = 'fas fa-volume-up';
     }
 } 
